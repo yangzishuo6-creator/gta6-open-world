@@ -1,19 +1,46 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
-<style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Harbor Bay</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./hud.css">
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
-<p id="status" role="status" aria-live="polite"></p>
-<script type="module" src="./src/main.js"></script>
+  <canvas id="city" aria-label="Harbor Bay game world"></canvas>
+  <main id="hud" hidden>
+    <header class="brand"><i></i><div>HARBOR <em>BAY</em><small id="district"></small></div></header>
+    <section class="objective">
+      <div class="eyebrow" id="chapter"></div>
+      <h2 id="mission"></h2>
+      <p id="objective"></p>
+      <div id="distance"></div>
+    </section>
+    <aside class="status">
+      <div class="wallet"><span>COURIER ACCOUNT</span><strong id="cash">$0</strong></div>
+      <div class="heat"><span id="heat-label">POLICE HEAT</span><strong id="stars"></strong></div>
+    </aside>
+    <footer class="navigation">
+      <div class="map-head"><span>CITY RADAR</span><span>▲ N</span></div>
+      <canvas id="radar" width="212" height="148" aria-label="Nearby streets and tracked targets"></canvas>
+      <div class="map-foot"><span id="mode"></span><strong id="speed"></strong></div>
+      <div class="vital"><span>CONDITION</span><meter id="health" min="0" max="100" value="100"></meter></div>
+    </footer>
+    <div id="toast" role="status"></div>
+    <div id="prompt"></div>
+    <div class="legend"><kbd>WASD</kbd> Move / drive <kbd>E</kbd> Interact <kbd>SPACE</kbd> Brake / dash <kbd>ESC</kbd> Menu</div>
+  </main>
+  <section id="menu" class="menu">
+    <div class="menu-card">
+      <div class="eyebrow">A COASTAL CRIME STORY</div>
+      <h1 id="menu-title">HARBOR<br><em>BAY</em></h1>
+      <p id="menu-copy">The port authority buried the evidence. The courier they fired knows where to look.</p>
+      <button id="play" autofocus>Start story <span>↗</span></button>
+      <button id="new-game" hidden>Start over <span>↗</span></button>
+      <p class="menu-controls">WASD / arrows to move and drive<br>E to interact or take a vehicle<br>Click to fire your pulse tool on foot<br>Space to handbrake or dash · M to mute</p>
+    </div>
+  </section>
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>

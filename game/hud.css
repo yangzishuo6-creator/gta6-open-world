@@ -1,0 +1,48 @@
+:root{font-family:Inter,Arial,sans-serif;color:#fff8e5;background:#132e35;font-synthesis:none;--gold:#ffd575;--ink:#112a30;--pane:#10272dec}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;overflow:hidden}
+#city{display:block;width:100vw;height:100vh}
+#hud{position:fixed;inset:0;pointer-events:none}
+.brand{position:absolute;top:23px;left:25px;display:flex;align-items:center;gap:11px;font-size:23px;letter-spacing:-.05em;font-weight:950;text-shadow:0 2px 7px #122b30}
+.brand i{width:30px;height:30px;border:2px solid var(--gold);border-radius:50%;background:linear-gradient(163deg,transparent 49%,var(--gold) 50% 56%,transparent 57% 63%,var(--gold) 64% 70%,transparent 71%)}
+em{font-style:normal;color:var(--gold)}
+.brand small{display:block;font-size:10px;margin-top:2px;letter-spacing:.19em;text-transform:uppercase}
+.objective,.status,.navigation{background:var(--pane);box-shadow:0 7px 28px #18272341;border:1px solid #fff5db35}
+.objective{position:absolute;top:82px;left:24px;width:min(272px,43vw);padding:15px 16px 14px;border-left:3px solid var(--gold)}
+.eyebrow,.status span,.map-head,.map-foot,.vital{font-weight:800;letter-spacing:.14em;font-size:10px;text-transform:uppercase}
+.eyebrow,#distance{color:var(--gold)}
+h2{font-size:24px;letter-spacing:-.055em;margin:5px 0}
+.objective p{font-size:13px;line-height:1.36;margin:0;color:#ebf3e6}
+#distance{font-size:11px;font-weight:800;margin-top:10px;letter-spacing:.06em}
+.status{position:absolute;right:24px;top:23px;min-width:166px}
+.wallet,.heat{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 13px}
+.wallet strong{color:#9debbe;font-size:18px}
+.heat{border-top:1px solid #fff5db35;display:block}
+#stars{display:block;font-size:24px;line-height:1;letter-spacing:.12em;margin-top:6px;color:#ffac84}
+#stars .inactive{color:#728c8b}
+.status.hot{border-color:#ff836b}
+.navigation{position:absolute;left:24px;bottom:23px;width:214px}
+.map-head,.map-foot,.vital{display:flex;justify-content:space-between;align-items:center;padding:8px 10px}
+.map-head span:last-child{color:var(--gold)}
+#radar{display:block;width:100%;height:auto;background:#253b40}
+.map-foot strong{color:var(--gold)}
+.vital{padding-top:0;color:#c8ded7}
+meter{width:90px;height:11px;accent-color:#98e5b2}
+meter::-webkit-meter-optimum-value{background:#98e5b2}
+.legend{position:absolute;right:24px;bottom:23px;background:var(--pane);padding:8px 10px;font-size:11px;border:1px solid #fff5db35}
+kbd{background:#365053;border:1px solid #b9cdbe48;padding:2px 4px;margin:0 2px 0 7px;font:700 10px Arial}
+#toast,#prompt{position:absolute;left:50%;transform:translateX(-50%);text-align:center;background:var(--pane)}
+#toast{top:23px;padding:9px 19px;border-top:2px solid var(--gold);font-size:13px;font-weight:700;max-width:40vw}
+#prompt{bottom:65px;padding:10px 16px;color:var(--gold);font-size:13px;font-weight:800}
+#prompt:empty,#toast:empty{display:none}
+.menu{position:fixed;inset:0;display:grid;align-items:center;padding:clamp(18px,6vw,85px);background:linear-gradient(90deg,#0b242bf2,#0b242bca 31%,#0b242b2a 72%)}
+.menu-card{max-width:375px}
+h1{font-size:clamp(60px,9.5vw,132px);line-height:.74;letter-spacing:-.091em;margin:23px 0 25px;font-weight:950}
+.menu p{font-size:15px;line-height:1.5;max-width:300px}
+button{cursor:pointer;display:flex;width:min(270px,75vw);justify-content:space-between;align-items:center;padding:12px 15px;border:0;background:var(--gold);color:var(--ink);font:900 15px Arial;text-align:left;margin-top:8px}
+button:hover,button:focus-visible{background:#ffebad;outline:2px solid #fff8e5;outline-offset:3px}
+#new-game{background:#e9f5e524;color:#fff}
+.menu .menu-controls{margin-top:17px;color:#c2ddd6;font-size:12px}
+@media(max-width:750px){.legend{display:none}.navigation{width:145px;bottom:10px;left:10px}.brand,.objective{left:10px}.status{right:10px;min-width:108px}.wallet{display:block}.status span{display:block}.objective{top:70px}.brand{top:14px}#toast{top:auto;bottom:115px}#prompt{bottom:20px;left:auto;right:10px;transform:none}}
+@media(max-width:500px){h1{font-size:clamp(45px,13vw,60px)}.objective{width:49vw}h2{font-size:19px}#prompt{max-width:50vw}}
