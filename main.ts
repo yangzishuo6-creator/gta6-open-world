@@ -1,10 +1,10 @@
-// Harbor Bay — static game and browser captures for the make.fun hand-in.
+// Package Harbor Bay's offline 3D build and in-engine captures for make.fun.
 import { cpSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
 
-const GAME_ID="harbor-bay";
+const GAME_ID = 'harbor-bay-3d';
 const repository = fileURLToPath(new URL('.', import.meta.url));
 const output = resolve(process.env.MAKEFUN_OUTPUT_DIR ?? '/output');
 const directories = ['game', 'screenshots'] as const;

@@ -1,46 +1,68 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Harbor Bay</title>
-  <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./hud.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harbor Bay | The Port Authority Files</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="./hud.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
 </head>
 <body>
-  <canvas id="city" aria-label="Harbor Bay game world"></canvas>
-  <main id="hud" hidden>
-    <header class="brand"><i></i><div>HARBOR <em>BAY</em><small id="district"></small></div></header>
-    <section class="objective">
-      <div class="eyebrow" id="chapter"></div>
-      <h2 id="mission"></h2>
-      <p id="objective"></p>
-      <div id="distance"></div>
+<canvas id="view" aria-label="Harbor Bay 3D game"></canvas>
+<div id="hud" hidden>
+  <div class="left-dock">
+    <section id="mission" class="panel">
+      <div class="eyebrow gold"><span>◆ &nbsp;ACTIVE MISSION</span><strong id="mission-tag"></strong></div>
+      <h1 id="mission-name"></h1>
+      <div class="objective"><span id="mission-objective"></span><strong id="mission-distance"></strong></div>
+      <div class="meter"><i id="mission-bar"></i></div>
     </section>
-    <aside class="status">
-      <div class="wallet"><span>COURIER ACCOUNT</span><strong id="cash">$0</strong></div>
-      <div class="heat"><span id="heat-label">POLICE HEAT</span><strong id="stars"></strong></div>
-    </aside>
-    <footer class="navigation">
-      <div class="map-head"><span>CITY RADAR</span><span>▲ N</span></div>
-      <canvas id="radar" width="212" height="148" aria-label="Nearby streets and tracked targets"></canvas>
-      <div class="map-foot"><span id="mode"></span><strong id="speed"></strong></div>
-      <div class="vital"><span>CONDITION</span><meter id="health" min="0" max="100" value="100"></meter></div>
-    </footer>
-    <div id="toast" role="status"></div>
-    <div id="prompt"></div>
-    <div class="legend"><kbd>WASD</kbd> Move / drive <kbd>E</kbd> Interact <kbd>SPACE</kbd> Brake / dash <kbd>ESC</kbd> Menu</div>
-  </main>
-  <section id="menu" class="menu">
-    <div class="menu-card">
-      <div class="eyebrow">A COASTAL CRIME STORY</div>
-      <h1 id="menu-title">HARBOR<br><em>BAY</em></h1>
-      <p id="menu-copy">The port authority buried the evidence. The courier they fired knows where to look.</p>
-      <button id="play" autofocus>Start story <span>↗</span></button>
-      <button id="new-game" hidden>Start over <span>↗</span></button>
-      <p class="menu-controls">WASD / arrows to move and drive<br>E to interact or take a vehicle<br>Click to fire your pulse tool on foot<br>Space to handbrake or dash · M to mute</p>
-    </div>
+    <section id="dispatch" class="panel" hidden>
+      <div class="eyebrow"><span><i class="alert-dot"></i> PORT PATROL</span><strong>DISPATCH</strong></div>
+      <ul id="unit-list"></ul>
+    </section>
+  </div>
+  <div class="right-dock">
+    <section id="heat" class="panel">
+      <div id="cash"></div>
+      <div id="stars"></div>
+      <div class="eyebrow"><span>POLICE HEAT</span><span>HARBOR BAY</span></div>
+    </section>
+    <section class="panel progress">
+      <div class="eyebrow"><strong id="rank"></strong><span id="xp"></span></div>
+      <div class="meter"><i id="xp-bar"></i></div>
+    </section>
+    <section id="crew" aria-label="Crew abilities"></section>
+  </div>
+  <div class="map-dock">
+    <canvas id="map" width="212" height="212" aria-label="District minimap"></canvas>
+    <section class="panel district"><strong id="district"></strong><span id="reputation"></span></section>
+    <section class="panel vitals">
+      <div><span>HP</span><div class="meter"><i id="health"></i></div></div>
+      <div><span>AR</span><div class="meter"><i id="armor"></i></div></div>
+    </section>
+  </div>
+  <section id="dialogue" class="panel" hidden>
+    <img id="portrait" alt="" width="66" height="66">
+    <div><strong>Nia</strong><p></p></div>
   </section>
-  <script type="module" src="./src/main.js"></script>
+  <section id="weapons" aria-label="Weapon slots"></section>
+  <section id="vehicle" class="panel" hidden>
+    <div class="eyebrow"><strong id="car-name"></strong><span id="damage"></span></div>
+    <div class="speed"><strong id="speed"></strong><span>KM/H</span></div>
+    <div class="speed-track"><i id="speed-fill"></i></div>
+    <div class="radio"><kbd>R</kbd><span id="radio"></span></div>
+  </section>
+  <div id="interact" class="panel" hidden><kbd>E</kbd> <span id="hint"></span></div>
+</div>
+<main id="menu" hidden>
+  <div class="menu-content">
+    <p id="menu-label"></p>
+    <h1 id="menu-heading"></h1>
+    <div id="menu-actions"></div>
+  </div>
+</main>
+<script type="module" src="./src/main.js"></script>
 </body>
 </html>
