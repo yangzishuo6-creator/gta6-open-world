@@ -1,7 +1,8 @@
 import {spawnCar} from '../vehicles/carModels.js';
-import {addPatrol} from '../police/dispatch.js';
+import {addPatrol,deployOfficer,fireFromCover} from '../police/dispatch.js';
 import {makePerson} from '../actors/pedestrians.js';
 import {startActivity} from '../missions/activities.js';
+import {fireWeapon} from '../combat/weapons.js';
 
 export function readShot() {
   const name=new URLSearchParams(location.search).get('shot');
@@ -18,37 +19,63 @@ export function stageShot(state) {
   state.mission=3;
   state.stage=2;
   if (state.shot==='foot') {
-    state.hero.mesh.position.set(15.4,0,-26);
-    state.hero.heading=.17;
-    state.view.heading=.17;
+    state.hero.mesh.position.set(7.4,0,-28);
+    state.hero.heading=.25;
+    state.view.heading=.25;
     state.slot=3;
-    state.stars=2;
-    addPatrol(state,0,3.2,-52,Math.PI);
-    addPatrol(state,1,-3.8,-74,Math.PI);
+    state.ammo[3]=[24,96];
+    state.stars=3;
+    state.heat=18;
+    deployOfficer(state,addPatrol(state,0,1.8,-39,2.52),-1);
+    deployOfficer(state,addPatrol(state,1,-5.2,-48,3.6),1);
+    const wreck=spawnCar(state.scene,'Canopy Transit',0xd7ab77,6.7,-49,-.86,'van');
+    const curbCar=state.traffic.find(car=>car.parked && car.mesh.position.x>0 && car.mesh.position.z===-45);
+    if (curbCar) curbCar.mesh.position.z=-92;
+    wreck.parked=true;
+    wreck.damage=100;
+    state.traffic.push(wreck);
     for (let i=0;i<7;i++) {
       const person=makePerson(state.scene,13+i%3*2.8,-33-i*4.7,[0xe1a26f,0x66a297,0xc77b75][i%3],i+1);
       person.heading=i%2 ? 0 : Math.PI;
       state.people.push(person);
     }
-    state.speak('Nia','Keep clear of the promenade crowd. The handoff is by the pier.',12);
-    return 1.6;
+    state.speak('Nia','Patrol blocked Bayfront. Get to the pier with the ledger.',12);
+    return 2.1;
   }
   const race=state.shot==='race';
   state.car=spawnCar(state.scene,'Aster Veloce',0xf29842,2.8,race ? 60 : 44,0);
   state.hero.mesh.visible=false;
-  state.car.speed=race ? 18 : 111/3.6;
+  state.car.speed=race ? 36 : 111/3.6;
   if (race) {
     startActivity(state,'race');
-    state.activity.rivals[0].mesh.position.set(-2.6,0,42);
-    state.activity.rivals[1].mesh.position.set(-5.3,0,40);
-    return 1.75;
+    state.activity.rivals[0].mesh.position.set(-1.1,0,48);
+    state.activity.rivals[1].mesh.position.set(-5.6,0,50);
+    state.activity.rivals[2].mesh.position.set(7.5,0,52);
+    state.activity.rivals.forEach(car=>{car.speed=20;});
+    state.activity.nitro=67;
+    state.activity.boosting=true;
+    const curbCar=state.traffic.find(car=>car.parked && car.mesh.position.x>0 && car.mesh.position.z===13);
+    if (curbCar) curbCar.mesh.position.z=-29;
+    state.message=null;
+    return 1.15;
   }
   state.car.damage=17;
   state.stars=4;
+  state.heat=18;
   addPatrol(state,0,5.2,46,-.05).car.speed=33;
   addPatrol(state,1,-4.1,47,.05).car.speed=34;
   addPatrol(state,2,-4.3,-57,Math.PI).car.speed=8;
   state.crew.ivo=22;
   state.speak('Nia','You’ve got the ledger. Stay on Bayfront and lose that spotlight before we meet.',12);
   return 1.7;
+}
+
+export function finishShot(state) {
+  if (state.shot!=='foot') return;
+  state.units.forEach(unit=>fireFromCover(state,unit));
+  const target=state.units[0].officer.mesh.position.clone();
+  target.y=1.13;
+  fireWeapon(state,target);
+  state.hitPoint=target;
+  state.hitUntil=state.time+.18;
 }

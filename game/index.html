@@ -24,6 +24,9 @@
         <div class="micro line"><span>◈ PORT PATROL DISPATCH</span><span class="live">● LIVE</span></div>
         <div id="units"></div>
       </div>
+      <div class="panel race-status" id="race-status" hidden>
+        <strong id="race-position"></strong><span id="race-clock"></span>
+      </div>
     </section>
     <section id="profile">
       <div class="panel wallet">
@@ -48,6 +51,9 @@
       </div>
     </section>
     <div id="crosshair" hidden><i></i><i></i></div>
+    <div id="rival-tags" aria-hidden="true"></div>
+    <div id="boost-lines" aria-hidden="true" hidden><i></i><i></i><i></i><i></i></div>
+    <div class="panel" id="weapon-status" hidden></div>
     <section id="centre">
       <div id="dialogue" class="panel" hidden>
         <canvas id="portrait" width="88" height="88" aria-hidden="true"></canvas>
@@ -62,6 +68,7 @@
       <div class="track speed-track"><i id="speed-fill"></i></div>
       <div class="micro line damage"><span>BODY DAMAGE</span><span id="damage"></span></div>
       <div id="radio"></div>
+      <div class="micro line" id="nitro" hidden></div>
     </section>
   </main>
   <div id="menu" hidden></div>

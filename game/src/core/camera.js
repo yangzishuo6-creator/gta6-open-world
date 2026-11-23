@@ -22,7 +22,7 @@ export function followPlayer(state,dt) {
   const foot=state.shot==='foot';
   const chase=state.shot==='chase';
   const race=state.shot==='race';
-  const back=chase ? 16 : race ? 10.5 : car ? 8.5 : foot ? 5.7 : 4.8;
+  const back=chase ? 16 : race ? 12.5 : car ? 8.5 : foot ? 5.7 : 4.8;
   const side=chase ? -3.7 : car ? .3 : foot ? 1.23 : -1.20;
   const sideX=Math.cos(angle)*side;
   const sideZ=-Math.sin(angle)*side;

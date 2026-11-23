@@ -7,15 +7,17 @@ import {driveCar,nearestRide} from './vehicles/vehicleController.js';
 import {makePerson,populateWalkers,urbanWalk,walkPlayer} from './actors/pedestrians.js';
 import {updateDispatch} from './police/dispatch.js';
 import {buildHelicopter,flyHelicopter} from './police/helicopter.js';
-import {updateWeapons} from './combat/weapons.js';
+import {refillAmmo,updateWeapons} from './combat/weapons.js';
+import {updateStreetEffects} from './combat/streetEffects.js';
 import {announceStage,advanceStory,currentStage} from './missions/storyMissions.js';
 import {activityPoint,makeCheckpoint,startActivity,updateActivities} from './missions/activities.js';
 import {updateCrew} from './missions/crew.js';
 import {createRadio} from './audio/radio.js';
 import {saveGame} from './save/saveGame.js';
+import {markGarage,useGarage} from './save/garage.js';
 import {bindInput} from './core/input.js';
 import {createView,followPlayer} from './core/camera.js';
-import {readShot,stageShot} from './core/shotMode.js';
+import {finishShot,readShot,stageShot} from './core/shotMode.js';
 import {createHUD} from './ui/hud.js';
 import {createMenus} from './ui/menus.js';
 
@@ -43,7 +45,7 @@ const state={
   scene,lots:buildCity(scene),input:bindInput(),view:createView(),
   traffic:populateTraffic(scene),people:populateWalkers(scene),
   hero:makePerson(scene,15,28,0x385a6a,2),heli:buildHelicopter(scene),
-  gate:makeCheckpoint(scene),audio:createRadio(),units:[],traces:[],
+  gate:makeCheckpoint(scene),audio:createRadio(),units:[],effects:[],ammo:refillAmmo(),hitUntil:0,
   crew:{nia:0,ivo:0},car:null,activity:null,shot:readShot(),mode:'title',
   time:0,heat:0,stars:0,cash:0,xp:0,mission:0,stage:0,slot:0,
   health:100,armour:45,shotCooldown:0,message:null,
@@ -100,6 +102,9 @@ const state={
     this.armour=save?.armour ?? 45;
     this.mission=save?.mission ?? 0;
     this.stage=save?.stage ?? 0;
+    this.ammo=save?.ammo ?? refillAmmo();
+    this.hitUntil=0;
+    this.shotCooldown=0;
     this.stars=0;
     this.crew={nia:0,ivo:0};
     this.mode='play';
@@ -111,6 +116,7 @@ const state={
   resume(){ this.mode='play'; showMenu('play'); this.audio.unlock(); },
   title(){ this.mode='title'; this.view.ready=false; showMenu('title'); },
 };
+markGarage(scene);
 const drawHUD=createHUD();
 const showMenu=createMenus(state);
 const camera=state.view.camera;
@@ -137,7 +143,7 @@ function readActions() {
       }
     }
   }
-  if (input.tap('KeyR')) startActivity(state,'race');
+  if (input.tap('KeyR') && state.car) startActivity(state,'race');
   if (input.tap('KeyC')) startActivity(state,'courier');
   if (input.tap('KeyT')) state.audio.cycle();
 }
@@ -162,6 +168,7 @@ function stepWorld(dt) {
       else walkPlayer(state,state.input,dt);
       updateWeapons(state,dt);
       updateCrew(state,dt);
+      useGarage(state);
     } else if (state.car) {
       state.car.mesh.position.z-=state.car.speed*dt;
     } else {
@@ -173,6 +180,7 @@ function stepWorld(dt) {
     if (state.message?.until<=state.time) state.message=null;
   }
   updateTraffic(state,dt);
+  updateStreetEffects(state,dt);
   urbanWalk(state,dt);
   flyHelicopter(state,dt);
   updateMarker();
@@ -181,6 +189,7 @@ function stepWorld(dt) {
 
 function present() {
   lighting.follow(state.mode==='title' ? {x:0,z:-37} : state.position());
+  camera.updateMatrixWorld();
   drawHUD(state);
   renderer.render(scene,camera);
 }
@@ -193,6 +202,7 @@ resize();
 if (state.shot) {
   const seconds=stageShot(state);
   for (let i=0;i<Math.round(seconds*60);i++) stepWorld(1/60);
+  finishShot(state);
   showMenu(state.mode);
   requestAnimationFrame(present);
 } else {

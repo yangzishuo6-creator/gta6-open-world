@@ -34,6 +34,7 @@ export function startActivity(state,kind) {
   const rivals=race ? [
     spawnCar(state.scene,'Cinder GT',0xbd554f,-3,52,0),
     spawnCar(state.scene,'Maris R',0x58aaa3,-.3,57,0),
+    spawnCar(state.scene,'Sora LX',0x657cae,6.6,61,0),
   ] : [];
   if (race && !state.shot) {
     p.set(3,0,59);
@@ -41,7 +42,7 @@ export function startActivity(state,kind) {
     state.car.speed=0;
     state.view.ready=false;
   }
-  state.activity={kind,step:start,left:race ? 37 : 34,rivals};
+  state.activity={kind,step:start,left:race ? 37 : 34,rivals,elapsed:0,nitro:100,boosting:false};
   state.speak('Ivo',race ? 'Bayfront is yours. Hit every gate before the other crews.' :
     'Deliver the copy along the promenade before the buyer leaves.',7);
 }
@@ -50,11 +51,21 @@ export function activityPoint(activity) {
   return activity ? routes[activity.kind][activity.step] : null;
 }
 
+export function raceRoute(activity) {
+  return routes.race.slice(Math.max(0,activity.step-1));
+}
+
+export function raceStandings(state) {
+  return [state.car,...state.activity.rivals].filter(Boolean)
+    .sort((a,b)=>a.mesh.position.z-b.mesh.position.z);
+}
+
 export function updateActivities(state,dt) {
   const run=state.activity;
   state.gate.visible=run?.kind==='race';
   if (!run) return;
   run.left-=dt;
+  run.elapsed+=dt;
   const p=state.position();
   const [x,z]=activityPoint(run);
   state.gate.position.set(x-3,0,z);

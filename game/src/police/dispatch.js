@@ -1,24 +1,71 @@
+import {Group} from 'three';
 import {spawnCar,faceCar} from '../vehicles/carModels.js';
 import {isBlocked} from '../world/cityBuilder.js';
+import {makePerson,stride} from '../actors/pedestrians.js';
+import {box,lettering} from '../world/geometry.js';
+import {addSirenReflection,muzzleBurst} from '../combat/streetEffects.js';
 
 const tactics=['RAMMING','FLANKING','ROADBLOCK','FLANKING','RAMMING'];
 
 export function addPatrol(state,i,x,z,heading=0) {
   const car=spawnCar(state.scene,'Port Patrol',i%2 ? 0x293d54 : 0x233450,x,z,heading,'patrol');
   const unit={id:'P-'+(12+i*7),tactic:tactics[i%tactics.length],car,cooldown:0};
+  addSirenReflection(car);
   state.units.push(unit);
   return unit;
+}
+
+export function deployOfficer(state,unit,side) {
+  const {car}=unit;
+  const door=unit.door ?? new Group();
+  if (!unit.door) {
+    box(door,0xeee5d1,0,.73,.64,.14,.57,1.28);
+    box(door,0x405968,0,1.16,.64,.105,.34,1.21);
+    lettering(door,'PATROL','#243850','#eee5d1',.95,.25,side*.08,.74,.64,side*Math.PI/2);
+    car.mesh.add(door);
+    unit.door=door;
+  }
+  door.position.set(side*1.07,0,-.93);
+  door.rotation.y=side*1.11;
+  door.visible=true;
+  car.mesh.updateMatrixWorld(true);
+  const cover=car.mesh.localToWorld(door.position.clone().set(side*2.25,0,.18));
+  unit.officer ??=makePerson(state.scene,cover.x,cover.z,0x25374f,2);
+  unit.officer.mesh.position.copy(cover);
+  unit.officer.mesh.visible=true;
+  unit.tactic='IN COVER';
+  car.speed=0;
+}
+
+export function fireFromCover(state,unit) {
+  const officer=unit.officer;
+  const target=state.position();
+  const p=officer.mesh.position;
+  officer.heading=Math.atan2(p.x-target.x,p.z-target.z);
+  stride(officer,0,0,true);
+  officer.body.position.y=-.13;
+  const origin=p.clone();
+  origin.y=1.36;
+  const end=target.clone().lerp(origin,.22);
+  end.y=1.1;
+  muzzleBurst(state,origin,end,0xffad73);
 }
 
 export function updateDispatch(state,dt) {
   const target=state.position();
   const wanted=state.stars ? Math.min(5,state.stars+1) : 0;
-  while (state.units.length>wanted) state.scene.remove(state.units.pop().car.mesh);
+  while (state.units.length>wanted) {
+    const unit=state.units.pop();
+    state.scene.remove(unit.car.mesh);
+    if (unit.officer) state.scene.remove(unit.officer.mesh);
+  }
   if (state.units.length<wanted && !state.shot) {
     const i=state.units.length;
-    const lane=Math.max(-208,Math.min(0,Math.round(target.x/52)*52));
-    const z=Math.max(-330,Math.min(275,target.z+(i===2 ? -70 : 39+i*12)));
-    addPatrol(state,i,lane+(i%2 ? -5 : 4),z);
+    const heading=state.car?.heading ?? state.hero.heading;
+    const ahead=i===2 ? 46 : 0;
+    const lane=Math.max(-208,Math.min(0,Math.round((target.x-Math.sin(heading)*ahead)/52)*52));
+    const z=Math.max(-330,Math.min(275,target.z+(ahead ? -Math.cos(heading)*ahead : 39+i*12)));
+    addPatrol(state,i,lane+(i%2 ? -5 : 4),z,ahead ? heading+Math.PI/2 : 0);
   }
   let closest=Infinity;
   for (let i=0;i<state.units.length;i++) {
@@ -27,6 +74,24 @@ export function updateDispatch(state,dt) {
     const pos=car.mesh.position;
     const gap=pos.distanceTo(target);
     closest=Math.min(closest,gap);
+    if (!state.shot && !state.car && state.stars>=3 && gap<23 && !unit.officer?.mesh.visible) {
+      unit.previousTactic=unit.tactic;
+      deployOfficer(state,unit,1);
+    }
+    if (unit.officer?.mesh.visible) {
+      if (!state.shot && (state.car || gap>33 || state.stars<3)) {
+        unit.officer.mesh.visible=unit.door.visible=false;
+        unit.tactic=unit.previousTactic;
+      } else {
+        unit.cooldown-=dt;
+        if (!state.shot && unit.cooldown<=0) {
+          fireFromCover(state,unit);
+          unit.cooldown=1.65;
+          if (gap<17) state.damagePlayer(3);
+        }
+        continue;
+      }
+    }
     const heading=state.car?.heading ?? state.hero.heading;
     const side=unit.tactic==='FLANKING' ? (i%2 ? -4.1 : 4.1) : 0;
     const lead=unit.tactic==='ROADBLOCK' ? 22 : side ? 5 : 0;

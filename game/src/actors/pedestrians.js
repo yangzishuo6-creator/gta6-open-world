@@ -88,7 +88,10 @@ export function urbanWalk(state,dt) {
       continue;
     }
     person.body.rotation.z=0;
-    const pace=state.stars && person.mesh.position.distanceTo(state.position())<22 ? 3.8 : 1.23;
+    const target=state.position();
+    const fleeing=state.stars && person.mesh.position.distanceTo(target)<27;
+    const pace=fleeing ? 5.4 : 1.23;
+    if (fleeing) person.heading=person.mesh.position.z<target.z ? 0 : Math.PI;
     person.mesh.position.z-=Math.cos(person.heading)*pace*dt;
     if (Math.abs(person.mesh.position.z)>325) person.heading=person.heading ? 0 : Math.PI;
     stride(person,pace,dt);

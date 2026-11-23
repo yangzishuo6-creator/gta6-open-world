@@ -18,6 +18,7 @@ export function saveGame(state) {
       version:1,x:pos.x,z:pos.z,heading:state.view.heading,
       cash:state.cash,xp:state.xp,mission:state.mission,stage:state.stage,
       health:state.health,armour:state.armour,
+      ammo:state.ammo,
     }));
     return true;
   } catch {

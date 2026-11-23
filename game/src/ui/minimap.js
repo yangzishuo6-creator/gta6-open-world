@@ -1,4 +1,5 @@
 import {avenues,crossStreets} from '../world/cityBuilder.js';
+import {raceRoute} from '../missions/activities.js';
 
 export function createMinimap() {
   const canvas=document.querySelector('#map');
@@ -31,6 +32,14 @@ export function createMinimap() {
     for (const street of crossStreets) ctx.fillRect(0,y(street-3.4),x(4),6.8*scale);
     ctx.fillRect(x(18),0,2,220);
     ctx.fillRect(x(21),y(-105),x(105)-x(21),6);
+    if (state.activity?.kind==='race') {
+      ctx.strokeStyle='#66f8db';
+      ctx.lineWidth=5;
+      ctx.beginPath();
+      ctx.moveTo(110,110);
+      for (const [mx,mz] of raceRoute(state.activity).slice(1)) ctx.lineTo(x(mx),y(mz));
+      ctx.stroke();
+    }
     for (const unit of state.units) {
       const q=unit.car.mesh.position;
       ctx.fillStyle='#ff776e';
