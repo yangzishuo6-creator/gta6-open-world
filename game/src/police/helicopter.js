@@ -26,12 +26,12 @@ export function buildHelicopter(scene) {
   box(body,0x282c34,0,1.1,0,.25,.6,.25);
   body.add(rotor);
   root.add(body);
-  const ray=new T.Mesh(new T.ConeGeometry(6.5,1,36,1,true),new T.ShaderMaterial({
+  const ray=new T.Mesh(new T.ConeGeometry(2.8,1,36,1,true),new T.ShaderMaterial({
     transparent:true,side:T.DoubleSide,depthWrite:false,blending:T.AdditiveBlending,
     vertexShader:`varying float y; void main(){y=position.y+.5;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-    fragmentShader:`varying float y; void main(){gl_FragColor=vec4(1.,.83,.47,.048+.18*y*y);}`,
+    fragmentShader:`varying float y; void main(){gl_FragColor=vec4(.71,.86,1.,.07+.19*y*y);}`,
   }));
-  const pool=new T.Mesh(new T.CircleGeometry(5.8,32),new T.MeshBasicMaterial({
+  const pool=new T.Mesh(new T.CircleGeometry(2.8,36),new T.MeshBasicMaterial({
     color:0xffe6a1,opacity:.15,transparent:true,depthWrite:false,blending:T.AdditiveBlending,
   }));
   pool.rotation.x=-Math.PI/2;
@@ -48,11 +48,12 @@ export function flyHelicopter(state,dt) {
   if (!root.visible) return;
   const p=state.position();
   const shot=state.shot==='chase';
-  root.position.set(p.x+(shot ? 11 : 13*Math.sin(state.time*.47)),shot ? 12.3 : 24,p.z-(shot ? 21 : 19));
+  root.position.set(p.x+(shot ? 5 : 13*Math.sin(state.time*.47)),shot ? 8.6 : 24,p.z-(shot ? 17 : 19));
   body.rotation.set(.095,shot ? -1.21 : -.45+Math.sin(state.time*.6)*.18,-.11);
   rotor.rotation.y+=dt*29;
-  pool.position.set(p.x+1,.048,p.z-6);
-  const top=root.position.clone().add(new T.Vector3(0,-.9,-1.2));
+  pool.position.set(p.x,.15,p.z);
+  root.updateMatrixWorld(true);
+  const top=body.localToWorld(new T.Vector3(0,-.91,-1.22));
   ray.position.copy(top).lerp(pool.position,.5);
   const direction=top.sub(pool.position);
   ray.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),direction.clone().normalize());

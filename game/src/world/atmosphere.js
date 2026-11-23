@@ -1,9 +1,9 @@
 import * as T from 'three';
 
 export function lightHarbor(scene) {
-  scene.fog = new T.FogExp2(0xf6ba9f, .0033);
-  scene.add(new T.HemisphereLight(0xffe4dc, 0x9eaabc, 1.72));
-  const key = new T.DirectionalLight(0xffc18a, 2.75);
+  scene.fog = new T.FogExp2(0xec9168, .0025);
+  scene.add(new T.HemisphereLight(0xffdfcd, 0x718fbf, 1.36));
+  const key = new T.DirectionalLight(0xffab60, 3.15);
   key.castShadow=true;
   key.shadow.mapSize.set(2048,2048);
   Object.assign(key.shadow.camera,{left:-69,right:69,top:69,bottom:-69,near:2,far:260});
@@ -23,9 +23,9 @@ export function lightHarbor(scene) {
       varying vec3 direction;
       void main(){
         vec3 n = normalize(direction);
-        vec3 s = normalize(vec3(.46,.115,-.89));
+        vec3 s = normalize(vec3(.12,.105,-.98));
         float d = distance(n,s);
-        vec3 c = mix(vec3(.99,.59,.41),vec3(.27,.52,.73),smoothstep(-.08,.57,n.y));
+        vec3 c = mix(vec3(1.,.47,.23),vec3(.15,.39,.67),smoothstep(-.08,.47,n.y));
         c += vec3(.32,.21,.09)*exp(-d*4.);
         c += vec3(.30,.17,.08)*exp(-d*22.);
         c = mix(c,vec3(1.,.94,.68),1.-smoothstep(.028,.033,d));

@@ -127,3 +127,140 @@ kbd { display:inline-grid; place-items:center; border:1px solid #918e87; border-
 @media (max-width:950px) {
   #hud { width:1280px; height:800px; transform:scale(var(--hud-scale,.6)); transform-origin:top left; }
 }
+
+:root {
+  --ink:#fff5df;
+  --gold:#ffbf65;
+  --aqua:#74f2bd;
+  --surface:#111925ee;
+  --stroke:#ffdaa344;
+}
+#viewport { filter:saturate(1.19) contrast(1.08); }
+.panel { background:linear-gradient(135deg,#252d37f5,#111925f5 68%); }
+#mission-stack { width:288px; left:22px; top:22px; }
+.mission { padding:12px 15px; }
+#mission-tag,#stage {
+  display:inline-block; background:#ffbf65; color:#20161d;
+  border-radius:4px; padding:5px 8px; font-size:12px; font-weight:900;
+}
+#stage { background:#080f17; color:var(--ink); border:1px solid #fff3d84d; font-variant-numeric:tabular-nums; }
+#mission-name { font-size:31px; line-height:1; }
+#objective { color:var(--ink); font-size:16px; }
+#objective strong { color:var(--gold); }
+.route { margin-top:9px; }
+.route .track { height:8px; position:relative; }
+.route .track::after { content:""; position:absolute; inset:0; background:repeating-linear-gradient(90deg,transparent 0 calc(var(--segment,25%) - 3px),#141b24 calc(var(--segment,25%) - 3px) var(--segment,25%)); }
+#mission-next,#dispatch-footer { margin-top:8px; font-size:12px; font-weight:800; color:#f7dcc2; }
+.dispatch { border-top:2px solid #ff6658; }
+.dispatch .micro { font-size:12px; }
+.unit > span { justify-self:start; border-radius:20px; padding:3px 8px; color:#23151a; background:#fb8980; }
+.unit > span[data-tactic="FLANKING"] { background:#ff9b59; }
+.unit > span[data-tactic="ROADBLOCK"] { background:#ffda74; }
+.unit > span[data-tactic="SPOTLIGHT"] { background:#82baff; color:#101b31; }
+#wanted {
+  position:absolute; top:19px; left:50%; transform:translateX(-50%); text-align:center;
+  padding:5px 17px 8px; background:#381e26ee; color:#fff1da;
+  border-bottom:3px solid #ff705f; box-shadow:0 6px 22px #28122470; border-radius:4px;
+}
+#stars { color:#fff2d9; font-size:23px; font-weight:900; letter-spacing:.08em; }
+#stars b { color:#ffc364; }
+#air-status { color:#bce0ff; font-size:10px; font-weight:900; letter-spacing:.14em; }
+#profile { top:22px; right:22px; width:251px; }
+#clock { color:#ffcd94; }
+#cash { color:#88f5ae; font-size:49px; }
+#rank { color:#f9cf94; }
+#slots { grid-template-columns:repeat(5,1fr); margin-top:7px; }
+.slot { display:grid; justify-items:center; gap:2px; font-size:11px; color:#f9e9ce; min-width:0; }
+.slot small { font-size:9px; font-weight:900; }
+.slot.locked { color:#a5aabb; background:#272b35; }
+.crew > div { grid-template-columns:31px 1fr auto 19px; gap:6px; }
+.crew canvas { width:31px; height:31px; border-radius:3px; }
+.crew b { display:block; font-size:11px; color:var(--gold); }
+#navigation { left:22px; bottom:20px; width:235px; }
+#map-ring { width:197px; height:197px; margin-left:0; }
+.district strong { font:bold italic 19px Georgia,serif; letter-spacing:0; }
+.street-name { color:#efd0a9; font-size:10px; font-weight:900; letter-spacing:.14em; margin-top:3px; }
+.vitals { grid-template-columns:56px 1fr; font-size:10px; }
+.vitals .track { height:6px; }
+#centre { bottom:20px; width:min(410px,41%); }
+#dialogue { grid-template-columns:53px 1fr; background:#151823ed; }
+#portrait { width:53px; height:53px; }
+#telemetry { right:22px; bottom:20px; width:250px; }
+#speed { font-size:79px; font-style:italic; }
+.damage .track { flex:1; }
+#radio { font-size:12px; letter-spacing:0; }
+#boost-lines { z-index:-1; }
+#hud { isolation:isolate; }
+#boost-lines i { width:330px; height:3px; background:linear-gradient(90deg,transparent,#ffe1adab,transparent); }
+#boost-lines i:nth-child(1) { bottom:32%; left:11%; transform:rotate(-19deg); }
+#boost-lines i:nth-child(2) { bottom:24%; left:18%; transform:rotate(-33deg); }
+#boost-lines i:nth-child(3) { bottom:41%; right:4%; transform:rotate(15deg); }
+#boost-lines i:nth-child(4) { bottom:23%; right:13%; transform:rotate(30deg); }
+#menu[data-screen="title"] {
+  padding:4vw 6vw;
+  background:linear-gradient(90deg,#171426f5 1%,#221728c9 28%,#35192322 55%,transparent 80%),
+    linear-gradient(0deg,#151826da,transparent 48%);
+}
+.menu-card h1 {
+  font-family:Georgia,serif; font-size:clamp(74px,12.4vw,182px); letter-spacing:-.078em;
+  font-style:italic; color:#fff0d1; text-shadow:4px 7px 0 #702d3c,8px 12px 22px #200f25;
+}
+.menu-card h1 em { color:#ffaf64; padding-left:.12em; }
+.title-subtitle { text-transform:uppercase; font-weight:900; letter-spacing:.22em; padding:8px 0 0 9px; }
+.menu-actions { gap:5px; }
+.menu-actions button { border-color:#ffd49b55; background:#141d2ce8; }
+.menu-actions button:disabled { opacity:.6; }
+.title-save {
+  position:absolute; bottom:8%; right:6%; width:292px; padding:19px 24px;
+  background:#151b29ed; border-top:4px solid #ffb668; box-shadow:0 9px 30px #17102088;
+}
+.title-save h2 { margin:0 0 10px; font:bold italic 34px Georgia,serif; }
+dl { display:grid; grid-template-columns:auto 1fr; gap:5px 12px; margin:8px 0 0; font-size:13px; }
+dt { color:#cadee1; }
+dd { margin:0; text-align:right; font-weight:800; }
+#menu[data-screen="pause"] {
+  display:block; padding:0; overflow:auto; background:#111a24;
+}
+.atlas {
+  width:min(1190px,94%); min-height:100%; padding:22px 0 18px; margin:auto;
+}
+.atlas header { display:flex; justify-content:space-between; align-items:center; }
+.atlas h1 { margin:0 0 10px; font:bold 59px/.98 Georgia,serif; letter-spacing:-.045em; }
+.atlas h1 em { color:#ffc079; }
+.atlas button { cursor:pointer; color:var(--ink); background:#243644; border:1px solid #a5beae61; padding:8px 13px; font:800 13px Arial,sans-serif; }
+.atlas button:hover,.atlas button:focus-visible { outline:2px solid var(--aqua); }
+.atlas nav { display:flex; gap:3px; margin:9px 0 16px; border-bottom:1px solid #cadbd244; }
+.atlas nav button { min-width:95px; border:0; border-bottom:3px solid transparent; text-transform:uppercase; letter-spacing:.1em; }
+.atlas nav button[aria-pressed="true"] { background:#ffbf78; color:#1c222a; border-color:#ffedc0; }
+.atlas-body { display:grid; grid-template-columns:1.19fr 1fr; gap:20px; }
+.atlas-drawing { align-self:start; background:#103b4d; border:1px solid #4f7778; }
+.atlas-drawing canvas { display:block; width:100%; max-height:570px; }
+.atlas-legend { display:flex; flex-wrap:wrap; justify-content:space-around; gap:6px; padding:11px 8px; background:#192d39; color:#ffe4b4; font-weight:800; font-size:13px; }
+.atlas-detail { background:#1a2833; min-width:0; padding:16px 17px; border-top:3px solid #83e5c3; }
+.atlas h2,.atlas h3,.atlas p { margin:0 0 6px; }
+.atlas h2 { font: bold 26px Georgia,serif; }
+.atlas h3 { font-size:17px; color:#ffc98e; }
+.atlas p { color:#dae8df; font-size:13px; }
+.atlas-completion { display:flex; gap:14px; align-items:center; }
+.atlas-completion strong {
+  display:grid; place-items:center; width:68px; height:68px; border-radius:50%; font-size:21px;
+  background:radial-gradient(circle,#1a2833 58%,transparent 60%),conic-gradient(#85f1c5 var(--completion),#395262 0);
+}
+.atlas-jobs { padding:0; margin:12px 0 15px; list-style:none; }
+.atlas-jobs li { display:grid; grid-template-columns:23px 1fr auto; align-items:center; gap:8px; padding:6px 8px; border-bottom:1px solid #b1c8ca28; font-size:14px; }
+.atlas-jobs b { color:#aecacb; }
+.atlas-jobs small { color:#c7dddd; font-size:9px; font-weight:900; letter-spacing:.08em; }
+.atlas-jobs .current { background:#fcbc76; color:#25242c; font-weight:900; }
+.atlas-jobs .current :is(b,small) { color:#352531; }
+.atlas-summary { display:grid; grid-template-columns:1fr 1.15fr; gap:12px; }
+.atlas-summary > div { padding-top:8px; border-top:1px solid #a8c2c563; }
+.atlas-summary dl { font-size:11px; gap:3px 5px; }
+.slot-options { display:flex; flex-wrap:wrap; gap:5px; margin:10px 0; }
+.slot-options button[aria-pressed="true"] { background:var(--gold); color:#20232a; }
+.atlas-detail > dl { margin-bottom:14px; }
+@media(max-width:740px) {
+  .atlas-body { grid-template-columns:1fr; }
+  .atlas nav { flex-wrap:wrap; }
+  .atlas nav button { min-width:0; }
+  .title-save { width:205px; right:3%; }
+}

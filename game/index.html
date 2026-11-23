@@ -19,25 +19,29 @@
         <h1 id="mission-name"></h1>
         <div id="objective"></div>
         <div class="line route"><span id="distance"></span><div class="track"><i id="stage-fill"></i></div></div>
+        <div id="mission-next"></div>
       </div>
       <div class="panel dispatch" id="dispatch">
-        <div class="micro line"><span>◈ PORT PATROL DISPATCH</span><span class="live">● LIVE</span></div>
+        <div class="micro line"><span>PORT PATROL</span><span class="live" id="unit-count"></span></div>
         <div id="units"></div>
+        <div id="dispatch-footer"></div>
       </div>
       <div class="panel race-status" id="race-status" hidden>
         <strong id="race-position"></strong><span id="race-clock"></span>
       </div>
     </section>
+    <div id="wanted" hidden><div id="stars"></div><small id="air-status"></small></div>
     <section id="profile">
       <div class="panel wallet">
-        <div class="micro line"><span>ON HAND</span><span id="stars" aria-label="Wanted level"></span></div>
+        <div class="micro line"><span>ON HAND</span><time id="clock"></time></div>
         <div id="cash"></div>
         <div class="micro line"><span id="rank"></span><span id="xp"></span></div>
         <div class="track"><i id="xp-fill"></i></div>
       </div>
+      <div id="slots"></div>
       <div class="crew">
-        <div class="panel"><kbd>Q</kbd><span><b>NIA</b> Diversion</span><i id="nia-status"></i></div>
-        <div class="panel"><kbd>F</kbd><span><b>IVO</b> Repair / Armour</span><i id="ivo-status"></i></div>
+        <div class="panel"><canvas id="nia-face" width="88" height="88"></canvas><span><b>NIA · FIXER</b>Diversion</span><i id="nia-status"></i><kbd>Q</kbd></div>
+        <div class="panel"><canvas id="ivo-face" width="88" height="88"></canvas><span><b>IVO · MECHANIC</b>Repair / Armour</span><i id="ivo-status"></i><kbd>F</kbd></div>
       </div>
     </section>
     <section id="navigation">
@@ -47,7 +51,8 @@
       </div>
       <div class="panel district">
         <div class="line"><strong id="district">JUNIPER MILE</strong><small id="standing"></small></div>
-        <div class="vitals"><span>HP</span><div class="track"><i id="health"></i></div><span>AR</span><div class="track"><i id="armour"></i></div></div>
+        <div class="street-name">BAYFRONT DRIVE</div>
+        <div class="vitals"><span>HEALTH</span><div class="track"><i id="health"></i></div><span>ARMOUR</span><div class="track"><i id="armour"></i></div></div>
       </div>
     </section>
     <div id="crosshair" hidden><i></i><i></i></div>
@@ -60,13 +65,12 @@
         <div><b id="speaker"></b><div id="quote"></div></div>
       </div>
       <div id="prompt" hidden></div>
-      <div id="slots"></div>
     </section>
     <section id="telemetry" class="panel">
       <div class="micro line"><span id="car-name"></span><span id="gear"></span></div>
       <div id="speed-row"><strong id="speed"></strong><b>KM/H</b></div>
       <div class="track speed-track"><i id="speed-fill"></i></div>
-      <div class="micro line damage"><span>BODY DAMAGE</span><span id="damage"></span></div>
+      <div class="micro line damage"><span>CONDITION</span><div class="track"><i id="condition"></i></div><span id="damage"></span></div>
       <div id="radio"></div>
       <div class="micro line" id="nitro" hidden></div>
     </section>

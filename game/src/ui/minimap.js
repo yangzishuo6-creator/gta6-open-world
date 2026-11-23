@@ -54,6 +54,15 @@ export function createMinimap() {
       const dx=x(marker[0])-110;
       const dy=y(marker[1])-110;
       const fit=Math.min(1,96/Math.max(.1,Math.hypot(dx,dy)));
+      if (state.activity?.kind!=='race') {
+        ctx.strokeStyle='#71ffcd';
+        ctx.lineWidth=4;
+        ctx.beginPath();
+        ctx.moveTo(110,110);
+        ctx.lineTo(110,110+dy*fit);
+        ctx.lineTo(110+dx*fit,110+dy*fit);
+        ctx.stroke();
+      }
       ctx.save();
       ctx.translate(110+dx*fit,110+dy*fit);
       ctx.rotate(Math.PI/4);

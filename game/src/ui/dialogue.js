@@ -6,7 +6,7 @@ function polygon(ctx,color,points) {
   ctx.fill();
 }
 
-function portrait(canvas,speaker) {
+export function portrait(canvas,speaker) {
   const ctx=canvas.getContext('2d');
   const nia=speaker==='Nia';
   ctx.fillStyle=nia ? '#78ac9b' : '#c38d69';
@@ -39,7 +39,7 @@ export function createDialogue() {
     if (!message || message===previous) return;
     previous=message;
     portrait(canvas,message.speaker);
-    name.textContent=message.speaker.toUpperCase();
+    name.textContent=message.speaker.toUpperCase()+' · '+(message.speaker==='Nia' ? 'FIXER' : 'MECHANIC');
     quote.textContent=message.line;
   };
 }

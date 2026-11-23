@@ -54,6 +54,7 @@ export function advanceStory(state) {
   state.stage++;
   if (state.stage===mission.stages.length) {
     state.cash+=mission.pay;
+    state.stats.earned+=mission.pay;
     state.xp+=220+state.mission*55;
     state.mission++;
     state.stage=0;

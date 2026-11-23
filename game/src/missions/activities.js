@@ -82,6 +82,7 @@ export function updateActivities(state,dt) {
   if (complete || run.left<=0 || lost) {
     if (complete) {
       state.cash+=run.kind==='race' ? 850 : 420;
+      state.stats.earned+=run.kind==='race' ? 850 : 420;
       state.xp+=140;
       state.save();
     }

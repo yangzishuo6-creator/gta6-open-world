@@ -9,8 +9,8 @@ export function followPlayer(state,dt) {
   const {view,car}=state;
   const camera=view.camera;
   if (state.mode==='title' || state.shot==='title') {
-    camera.position.set(27,27,-34);
-    camera.lookAt(5,8,-139);
+    camera.position.set(71,32,56);
+    camera.lookAt(6,9,-124);
     return;
   }
   const p=state.position();
@@ -21,12 +21,11 @@ export function followPlayer(state,dt) {
   const fz=-Math.cos(angle);
   const foot=state.shot==='foot';
   const chase=state.shot==='chase';
-  const race=state.shot==='race';
-  const back=chase ? 16 : race ? 12.5 : car ? 8.5 : foot ? 5.7 : 4.8;
-  const side=chase ? -3.7 : car ? .3 : foot ? 1.23 : -1.20;
+  const back=chase ? 5.9 : car ? 7.8 : foot ? 3.35 : 4.8;
+  const side=chase ? -1.45 : car ? .55 : foot ? 1.32 : -1.20;
   const sideX=Math.cos(angle)*side;
   const sideZ=-Math.sin(angle)*side;
-  const ideal=new T.Vector3(p.x-fx*back+sideX,car ? chase ? 7.6 : 4.1 : foot ? 3.75 : 4.15,p.z-fz*back+sideZ);
+  const ideal=new T.Vector3(p.x-fx*back+sideX,car ? chase ? 3.35 : 3.65 : foot ? 2.54 : 4.15,p.z-fz*back+sideZ);
   let obstructed=false;
   for (let i=1;i<=7;i++) {
     const x=T.MathUtils.lerp(p.x,ideal.x,i/7);
@@ -41,6 +40,6 @@ export function followPlayer(state,dt) {
   }
   camera.position.lerp(ideal,view.ready && !obstructed ? 1-Math.exp(-dt*10) : 1);
   const lead=foot ? 8 : chase ? 14 : 17;
-  camera.lookAt(p.x+fx*lead+(chase ? 3.2 : 0),car ? chase ? 3.35 : 2.5 : foot ? 1.71 : 2.25,p.z+fz*lead);
+  camera.lookAt(p.x+fx*lead+(chase ? 2.3 : foot ? .8 : 0),car ? chase ? 3.18 : 2.5 : foot ? 1.82 : 2.25,p.z+fz*lead);
   view.ready=true;
 }

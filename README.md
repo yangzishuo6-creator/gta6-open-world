@@ -25,7 +25,7 @@ Run `node serve.ts` with Node.js 22 or newer and open `http://localhost:8080` in
 | R on foot / Shift in a race | Reload / nitro |
 | H / B at Ivo’s garage | Save progress / restock ammo for $120 |
 | T | Cycle radio stations |
-| Esc | Pause or resume |
+| M / Esc | Open the city atlas or resume |
 
 ## Source map
 
@@ -36,7 +36,7 @@ Run `node serve.ts` with Node.js 22 or newer and open `http://localhost:8080` in
 | `vehicles/`, `actors/` | Car models, arcade driving, traffic and pedestrians |
 | `police/`, `combat/` | Cruiser cover, roadblocks, air support, weapons and street effects |
 | `missions/` | Ledger case, activities and crew cooldowns |
-| `ui/` | HUD, local map, dialogue portraits and menus |
+| `ui/` | HUD, local map, dialogue portraits, title and interactive city atlas |
 | `audio/`, `save/` | Synth radio, sound effects, garage services and local progression |
 
 Run `MAKEFUN_OUTPUT_DIR=out node main.ts` to package the game and screenshots and generate `out/dossier.json`.

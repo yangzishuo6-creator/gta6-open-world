@@ -25,7 +25,7 @@ const canvasHost=document.getElementById('viewport');
 const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(1.5,devicePixelRatio));
 renderer.toneMapping=T.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.12;
+renderer.toneMappingExposure=1.04;
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=T.PCFSoftShadowMap;
 canvasHost.append(renderer.domElement);
@@ -48,6 +48,7 @@ const state={
   gate:makeCheckpoint(scene),audio:createRadio(),units:[],effects:[],ammo:refillAmmo(),hitUntil:0,
   crew:{nia:0,ivo:0},car:null,activity:null,shot:readShot(),mode:'title',
   time:0,heat:0,stars:0,cash:0,xp:0,mission:0,stage:0,slot:0,
+  stats:{earned:0,stolen:0,escapes:0},owned:[],taken:new Set(),
   health:100,armour:45,shotCooldown:0,message:null,
   position(){ return this.car?.mesh.position ?? this.hero.mesh.position; },
   alert(level,seconds=15) {
@@ -86,7 +87,7 @@ const state={
     this.view.ready=false;
   },
   speak(speaker,line,seconds) { this.message={speaker,line,until:this.time+seconds}; },
-  save(){ return saveGame(this); },
+  save(slot){ return saveGame(this,slot); },
   start(save) {
     if (this.car) this.exitCar();
     if (this.activity) this.activity.rivals.forEach(car=>scene.remove(car.mesh));
@@ -103,6 +104,9 @@ const state={
     this.mission=save?.mission ?? 0;
     this.stage=save?.stage ?? 0;
     this.ammo=save?.ammo ?? refillAmmo();
+    this.stats={earned:0,stolen:0,escapes:0,...save?.stats};
+    this.owned=save?.owned ?? [];
+    this.taken.clear();
     this.hitUntil=0;
     this.shotCooldown=0;
     this.stars=0;
@@ -135,6 +139,11 @@ function readActions() {
     else {
       const car=nearestRide(state);
       if (car) {
+        if (!state.taken.has(car)) {
+          state.stats.stolen++;
+          state.taken.add(car);
+        }
+        if (!state.owned.includes(car.name)) state.owned.push(car.name);
         state.car=car;
         state.hero.mesh.visible=false;
         state.view.ready=false;
@@ -211,7 +220,7 @@ if (state.shot) {
   function frame(now) {
     const dt=Math.min(.045,Math.max(.0001,(now-previous)/1000));
     previous=now;
-    if (state.input.tap('Escape')) {
+    if (state.input.tap('Escape') || state.input.tap('KeyM')) {
       if (state.mode==='play') {
         state.mode='pause';
         showMenu('pause');

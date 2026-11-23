@@ -49,7 +49,7 @@ export function spawnCar(scene, name, color, x, z, heading=0, type='coupe') {
     box(mesh,color,side*.86,1.0,.54,.46,.13,.27);
     box(mesh,0xfaf1bc,side*.75,.71,-length,.4,.18,.065);
     const tail=box(mesh,0xff484b,side*.71,.74,length+.115,.54,.19,.071);
-    tail.material=new T.MeshStandardMaterial({color:0xff4038,emissive:0xc80c10,emissiveIntensity:.46});
+    tail.material=new T.MeshStandardMaterial({color:0xff4038,emissive:0xff3022,emissiveIntensity:1.15});
     box(mesh,0xffa897,side*.71,.78,length+.161,.39,.035,.03);
     for (const axle of [-1.35,1.36]) {
       const wheel = new T.Mesh(tire,paint(0x202027));
@@ -69,6 +69,10 @@ export function spawnCar(scene, name, color, x, z, heading=0, type='coupe') {
     box(mesh,0x282f39,0,.57,length+.171,.94,.12,.04);
     box(mesh,0x343944,0,.95,1.3,1.26,.055,.27);
     box(mesh,0x202630,0,.93,1.89,1.04,.07,.2);
+    box(mesh,0x171b23,0,.7,length+.16,1.81,.1,.05);
+    box(mesh,0xff4830,0,.765,length+.181,1.72,.034,.024).material=
+      new T.MeshBasicMaterial({color:0xff4f33,toneMapped:false});
+    box(mesh,0x242c39,0,.45,length+.14,1.9,.16,.18);
   }
   const lights = [];
   if (patrol) {

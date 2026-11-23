@@ -33,7 +33,7 @@ export function deployOfficer(state,unit,side) {
   unit.officer ??=makePerson(state.scene,cover.x,cover.z,0x25374f,2);
   unit.officer.mesh.position.copy(cover);
   unit.officer.mesh.visible=true;
-  unit.tactic='IN COVER';
+  unit.tactic='FIRING';
   car.speed=0;
 }
 
@@ -128,6 +128,7 @@ export function updateDispatch(state,dt) {
     state.heat-=dt*(closest>45 ? 1 : .18);
     if (state.heat<=0) {
       state.stars--;
+      if (!state.stars) state.stats.escapes++;
       state.heat=18;
     }
   }

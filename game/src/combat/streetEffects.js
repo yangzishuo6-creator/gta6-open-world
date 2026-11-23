@@ -72,8 +72,8 @@ export function updateStreetEffects(state,dt) {
     if (burning) {
       const flame=point.clone().add(new T.Vector3(Math.sin(t*33)*.64,.72,0));
       flame.addScaledVector(state.position().clone().sub(point).setY(0).normalize(),1.8);
-      particle(state,flame,0xff641c,2.65,.45,2.9,true);
-      particle(state,flame,0xffd365,1.12,.28,1.8,true);
+      particle(state,flame,0xff4811,4.2,.49,3.5,true);
+      particle(state,flame,0xffc34d,2.1,.32,2.1,true);
       particle(state,point.clone().add(new T.Vector3(Math.sin(t*39)*1.7,.8,Math.cos(t*29))),
         0xffae3b,.49,.62,3.4,true);
     }
@@ -82,12 +82,33 @@ export function updateStreetEffects(state,dt) {
 
 export function addSirenReflection(car) {
   for (const [x,color] of [[-.92,0x3277ff],[.92,0xff3449]]) {
-    const light=new T.Mesh(new T.PlaneGeometry(4.8,6),new T.MeshBasicMaterial({
-      map:texture,color,transparent:true,opacity:.57,depthWrite:false,
+    const light=new T.Mesh(new T.PlaneGeometry(6.5,10),new T.MeshBasicMaterial({
+      map:texture,color,transparent:true,opacity:.81,depthWrite:false,
       blending:T.AdditiveBlending,toneMapped:false,
     }));
     light.rotation.x=-Math.PI/2;
-    light.position.set(x,.13,.7);
+    light.position.set(x,.13,-1.9);
     car.mesh.add(light);
+    const bloom=new T.Sprite(new T.SpriteMaterial({
+      map:texture,color,opacity:.9,transparent:true,depthWrite:false,
+      blending:T.AdditiveBlending,toneMapped:false,
+    }));
+    bloom.position.set(x*.51,1.65,0);
+    bloom.scale.set(2.3,1.65,1);
+    car.mesh.add(bloom);
+  }
+}
+
+export function addCarLampBloom(car) {
+  for (const side of [-1,1]) {
+    for (const [z,color,size] of [[2.37,0xff3030,.92],[-2.24,0xffdf9f,.72]]) {
+      const glow=new T.Sprite(new T.SpriteMaterial({
+        map:texture,color,opacity:.72,transparent:true,depthWrite:false,
+        blending:T.AdditiveBlending,toneMapped:false,
+      }));
+      glow.position.set(side*.72,.76,z);
+      glow.scale.set(size,size*.48,1);
+      car.mesh.add(glow);
+    }
   }
 }

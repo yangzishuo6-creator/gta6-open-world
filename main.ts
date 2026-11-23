@@ -1,4 +1,4 @@
-// Package Harbor Bay and its four browser captures for the gta6-01 hand-in.
+// Package Harbor Bay and its chase, firefight, atlas, and title captures for the gta6-01 hand-in.
 // Run MAKEFUN_OUTPUT_DIR=out node main.ts locally to inspect the output.
 
 import { cpSync, mkdirSync, writeFileSync } from 'node:fs';

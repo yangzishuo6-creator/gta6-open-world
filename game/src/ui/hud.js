@@ -2,7 +2,7 @@ import {campaign,currentStage} from '../missions/storyMissions.js';
 import {activityPoint,raceStandings} from '../missions/activities.js';
 import {loadout} from '../combat/weapons.js';
 import {nearestRide} from '../vehicles/vehicleController.js';
-import {createDialogue} from './dialogue.js';
+import {createDialogue,portrait} from './dialogue.js';
 import {createMinimap} from './minimap.js';
 import {garageNearby} from '../save/garage.js';
 
@@ -17,6 +17,8 @@ export function createHUD() {
   };
   const fill=(id,value)=>{ get(id).style.width=Math.min(100,value)+'%'; };
   const dialogue=createDialogue();
+  portrait(get('nia-face'),'Nia');
+  portrait(get('ivo-face'),'Ivo');
   const map=createMinimap();
   const dollars=new Intl.NumberFormat('en-US');
   const tags=Array.from({length:3},()=>{
@@ -25,15 +27,18 @@ export function createHUD() {
     get('rival-tags').append(node);
     return node;
   });
-  const slots=loadout.map((weapon,i)=>{
+  const shapes=['M2 4h17v4h-8l-2 6H5l2-6H2z','M2 4h20v4h-8v5h-4V8H2z','M1 5h22v3H9l-4 5H1l2-5H1z','M1 5h8V3h10v2h4v3h-8l-1 5h-3V8H6l-3 3H1z','M7 7V5a5 5 0 0 1 10 0v2h2v8H5V7zm2 0h6V5a3 3 0 0 0-6 0z'];
+  const slots=[...loadout,{name:'Locked'}].map((weapon,i)=>{
     const item=document.createElement('div');
     item.className='panel slot';
-    item.innerHTML='<kbd>'+(i+1)+'</kbd>'+weapon.name;
+    item.title=weapon.name;
+    item.innerHTML='<svg width="24" height="16" viewBox="0 0 24 16" aria-hidden="true"><path fill="currentColor" d="'+shapes[i]+'"/></svg><small></small>';
+    item.classList.toggle('locked',i===loadout.length);
     get('slots').append(item);
     return item;
   });
   return state=>{
-    const showing=state.mode==='play' || state.mode==='pause';
+    const showing=state.mode==='play';
     get('hud').hidden=!showing;
     if (!showing) return;
     const run=state.activity;
@@ -45,20 +50,39 @@ export function createHUD() {
     const distance=marker ? Math.round(Math.hypot(p.x-marker[0],p.z-marker[1])) : 0;
     set('mission-name',run ? run.kind==='race' ? 'Juniper Circuit' : 'Pier Courier' : mission?.title ?? 'Harbor Bay');
     set('stage',run ? 'GATE '+(run.step+1)+' / '+(run.kind==='race' ? 6 : 5) : mission ? 'STAGE '+(state.stage+1)+'/'+mission.stages.length : 'CASE CLOSED');
-    set('objective',run ? 'Reach the next marker · '+Math.ceil(run.left)+'s' : step?.[0] ?? 'Explore Juniper Mile');
+    const objective=run ? 'Reach the next marker' : step?.[0] ?? 'Explore Juniper Mile';
+    if (get('objective').textContent!==objective) {
+      const split=objective.indexOf(' ');
+      const emphasis=document.createElement('strong');
+      emphasis.textContent=objective.slice(split+1);
+      get('objective').replaceChildren(objective.slice(0,split+1),emphasis);
+    }
     set('distance',marker ? distance+' m' : '—');
-    fill('stage-fill',run ? run.step/5*100 : mission ? (state.stage+.5)/mission.stages.length*100 : 100);
+    const stages=run ? run.kind==='race' ? 6 : 5 : mission?.stages.length ?? 1;
+    get('stage-fill').parentElement.style.setProperty('--segment',100/stages+'%');
+    fill('stage-fill',run ? run.step/stages*100 : mission ? (state.stage+.5)/stages*100 : 100);
     get('dispatch').hidden=!state.stars;
-    set('mission-tag',!run && state.stars && step?.[3]==='lose' ?
-      'EVADE · '+Math.ceil(state.heat)+'s HEAT' : run ? 'SIDE ACTIVITY' : mission ? '◆ LEDGER CASE' : 'FREE ROAM');
+    set('mission-tag',run ? 'SIDE ACTIVITY' : mission ? 'JOB '+(state.mission+1)+'/'+campaign.length : 'FREE ROAM');
+    const seconds=Math.max(0,Math.ceil(run?.left ?? (state.stars ? state.heat : 0)));
+    if (seconds) set('stage',Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0'));
+    set('mission-next','NEXT: '+(run ? 'Clear the remaining checkpoints' :
+      mission?.stages[state.stage+1]?.[0] ?? campaign[state.mission+1]?.title ?? 'Explore Harbor Bay'));
     const units=state.units.slice(0,3).map(unit=>
-      '<div class="unit"><b>'+unit.id+'</b><span>'+unit.tactic+'</span><strong>'+
+      '<div class="unit"><b>'+unit.id+'</b><span data-tactic="'+unit.tactic+'">'+unit.tactic+'</span><strong>'+
       Math.round(unit.car.mesh.position.distanceTo(p))+' m</strong></div>');
-    if (state.stars>=4) units.push('<div class="unit air"><b>AIR-1</b><span>SPOTLIGHT</span><strong>'+
+    if (state.stars>=4) units.push('<div class="unit air"><b>AIR-1</b><span data-tactic="SPOTLIGHT">SPOTLIGHT</span><strong>'+
       Math.round(state.heli.root.position.distanceTo(p))+' m</strong></div>');
     get('units').innerHTML=units.join('');
+    set('unit-count',(state.units.length+Number(state.stars>=4))+' UNITS · '+state.stars+'★');
+    set('dispatch-footer',[state.units.length>3 ? '+'+(state.units.length-3)+' more units' : '',
+      state.units.some(unit=>unit.tactic==='ROADBLOCK') ? 'roadblock ahead' : ''].filter(Boolean).join(' · '));
     set('cash','$'+dollars.format(state.cash));
-    get('stars').innerHTML='<b>'+'★'.repeat(state.stars)+'</b>'+'☆'.repeat(5-state.stars);
+    const minute=(19*60+42+Math.floor(state.time/3))%1440;
+    set('clock',String(Math.floor(minute/60)).padStart(2,'0')+':'+String(minute%60).padStart(2,'0'));
+    get('wanted').hidden=!state.stars;
+    get('air-status').hidden=state.stars<4;
+    set('air-status','IN SIGHT — AIR UNIT HAS YOU');
+    get('stars').innerHTML='WANTED <b>'+'★'.repeat(state.stars)+'</b>';
     get('stars').setAttribute('aria-label',state.stars+' of 5 wanted stars');
     const rank=Math.min(5,Math.floor(state.xp/800));
     set('rank',['ROOKIE','RUNNER','WHEELHAND','FIXER','HARBOR ACE','LEGEND'][rank]);
@@ -73,7 +97,7 @@ export function createHUD() {
     get('telemetry').hidden=!state.car;
     get('race-status').hidden=!racing;
     get('nitro').hidden=!racing;
-    get('boost-lines').hidden=!racing || !run.boosting;
+    get('boost-lines').hidden=!(racing && run.boosting) && !(state.car && Math.abs(state.car.speed)>27);
     if (racing) {
       const standings=raceStandings(state);
       set('race-position',state.car ? 'P'+(standings.indexOf(state.car)+1)+'/4' : 'ON FOOT');
@@ -96,7 +120,8 @@ export function createHUD() {
       set('gear',state.car.speed<0 ? 'R' : 'D'+Math.max(1,Math.ceil(kmh/34)));
       set('speed',Math.round(kmh));
       fill('speed-fill',kmh/1.5);
-      set('damage',Math.round(state.car.damage)+'%');
+      set('damage',Math.round(100-state.car.damage)+'%');
+      fill('condition',100-state.car.damage);
       set('radio','♫  '+state.audio.label());
     }
     const hit=state.hitUntil>state.time;
@@ -111,7 +136,12 @@ export function createHUD() {
     get('weapon-status').hidden=Boolean(state.car);
     const [rounds,reserve]=state.ammo[state.slot];
     set('weapon-status',loadout[state.slot].name+'  ·  '+rounds+' / '+reserve+'  ·  R RELOAD');
-    slots.forEach((item,i)=>item.classList.toggle('active',state.slot===i));
+    slots.forEach((item,i)=>{
+      item.classList.toggle('active',state.slot===i);
+      const ammo=state.ammo[i];
+      const label=ammo ? ammo.join('/') : 'LOCKED';
+      if (item.lastElementChild.textContent!==label) item.lastElementChild.textContent=label;
+    });
     const ride=!state.car && nearestRide(state);
     const prompt=garageNearby(state) && !state.shot ? 'IVO GARAGE  ·  H SAVE  ·  B AMMO $120' :
       ride ? 'E  Take '+ride.name : !run && !state.shot ? state.car ? 'R  Juniper Circuit' : 'C  Pier Courier' : '';
