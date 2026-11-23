@@ -1,48 +1,60 @@
 import * as T from 'three';
-import {box} from '../world/geometry.js';
+import {box,paint} from '../world/geometry.js';
 
 export function buildHelicopter(scene) {
-  const body=new T.Group(), rotor=new T.Group();
-  box(body,0x253746,0,0,0,1.92,1.34,3.35);
-  box(body,0x4b7581,0,.16,1.38,1.73,.80,1.12).rotation.x=.21;
-  box(body,0xdfdac4,0,-.38,.08,1.99,.22,3.45);
-  box(body,0x263b4b,0,.08,-2.85,.49,.42,3.44);
-  box(body,0x263b4b,0,.57,-4.36,.26,1.35,.50).rotation.x=-.22;
-  for(const side of [-1,1]) {
-    box(body,0x25313a,side*1.03,-.96,0,.12,.12,3.6);
-    box(body,0x25313a,side*.78,-.63,.73,.12,.68,.12).rotation.z=side*.36;
-    box(body,side===1?0xff5a45:0x78e5e3,side*1.03,.31,.09,.13,.14,.19);
+  const root=new T.Group();
+  const body=new T.Group();
+  const shell=new T.Mesh(new T.SphereGeometry(1,14,10),paint(0x31495c));
+  shell.scale.set(1.16,1,2.12);
+  body.add(shell);
+  const glass=new T.Mesh(new T.SphereGeometry(1,14,8),paint(0x6e9ba4));
+  glass.position.set(0,.19,-1.16);
+  glass.scale.set(1.04,.76,1.21);
+  body.add(glass);
+  box(body,0x385d68,0,.17,3.07,.33,.42,4.8).rotation.x=.1;
+  box(body,0x40556b,0,.79,5.27,.17,1.39,.74).rotation.x=.29;
+  box(body,0xdac8aa,0,.19,3.9,2.19,.12,.39);
+  for (const side of [-1,1]) {
+    box(body,0x252c37,side*.91,-1.15,0,.12,.12,3.32);
+    box(body,0xd7c8b0,side*.81,-.76,-.72,.12,.72,.12).rotation.z=side*.42;
+    box(body,0xd7c8b0,side*.81,-.76,.72,.12,.72,.12).rotation.z=side*.42;
   }
-  box(body,0x3c4850,0,.89,0,.2,.52,.21);
-  rotor.position.y=1.13;
-  box(rotor,0x30373b,0,0,0,9.4,.055,.19);
-  box(rotor,0x30373b,0,0,0,.19,.055,9.4);
+  const rotor=new T.Group();
+  rotor.position.y=1.4;
+  box(rotor,0x323340,0,0,0,9.4,.05,.19);
+  box(rotor,0x323340,0,0,0,.19,.05,9.4);
+  box(body,0x282c34,0,1.1,0,.25,.6,.25);
   body.add(rotor);
-  scene.add(body);
-  const cone=new T.Mesh(new T.ConeGeometry(3.15,1,36,1,true),new T.ShaderMaterial({
-    transparent:true,depthWrite:false,side:T.DoubleSide,
-    vertexShader:`varying float h; void main(){h=position.y+.5;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-    fragmentShader:`varying float h;void main(){gl_FragColor=vec4(1.,.91,.65,.20*pow(h,.65)+.045);}`
+  root.add(body);
+  const ray=new T.Mesh(new T.ConeGeometry(6.5,1,36,1,true),new T.ShaderMaterial({
+    transparent:true,side:T.DoubleSide,depthWrite:false,blending:T.AdditiveBlending,
+    vertexShader:`varying float y; void main(){y=position.y+.5;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+    fragmentShader:`varying float y; void main(){gl_FragColor=vec4(1.,.83,.47,.048+.18*y*y);}`,
   }));
-  cone.renderOrder=2;
-  const lamp=new T.SpotLight(0xffe4aa,230,47,.26,.65,1.25);
-  scene.add(lamp,lamp.target,cone);
-  return {body,rotor,cone,lamp};
+  const pool=new T.Mesh(new T.CircleGeometry(5.8,32),new T.MeshBasicMaterial({
+    color:0xffe6a1,opacity:.15,transparent:true,depthWrite:false,blending:T.AdditiveBlending,
+  }));
+  pool.rotation.x=-Math.PI/2;
+  const lamp=new T.Mesh(new T.SphereGeometry(.24,10,6),new T.MeshBasicMaterial({color:0xffecb2}));
+  lamp.position.set(0,-.91,-1.22);
+  body.add(lamp);
+  scene.add(root,ray,pool);
+  return {root,body,rotor,ray,pool};
 }
-export function updateHelicopter(aircraft,player,heat,time,dt,shot) {
-  const {body,rotor,cone,lamp}=aircraft;
-  body.visible=cone.visible=lamp.visible=heat>=4;
-  if(heat<4)return;
-  const destination=new T.Vector3(player.x+(shot?-5:9+Math.sin(time*.55)*8),shot?8.6:14,player.z+(shot?20:-11+Math.cos(time*.55)*8));
-  body.position.lerp(destination,shot?1:1-Math.exp(-dt*1.6));
-  body.rotation.y=shot?.67:time*.58;
-  rotor.rotation.y=time*24;
-  const ground=new T.Vector3(player.x+(shot?2:0),.04,player.z+(shot?9:0));
-  const source=body.position.clone().add(new T.Vector3(0,-.52,.9));
-  const axis=source.clone().sub(ground);
-  cone.position.copy(ground).addScaledVector(axis,.5);
-  cone.scale.y=axis.length();
-  cone.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),axis.normalize());
-  lamp.position.copy(source);
-  lamp.target.position.copy(ground);
+
+export function flyHelicopter(state,dt) {
+  const {root,body,rotor,ray,pool}=state.heli;
+  root.visible=ray.visible=pool.visible=state.stars>=4;
+  if (!root.visible) return;
+  const p=state.position();
+  const shot=state.shot==='chase';
+  root.position.set(p.x+(shot ? 11 : 13*Math.sin(state.time*.47)),shot ? 12.3 : 24,p.z-(shot ? 21 : 19));
+  body.rotation.set(.095,shot ? -1.21 : -.45+Math.sin(state.time*.6)*.18,-.11);
+  rotor.rotation.y+=dt*29;
+  pool.position.set(p.x+1,.048,p.z-6);
+  const top=root.position.clone().add(new T.Vector3(0,-.9,-1.2));
+  ray.position.copy(top).lerp(pool.position,.5);
+  const direction=top.sub(pool.position);
+  ray.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),direction.clone().normalize());
+  ray.scale.y=direction.length();
 }

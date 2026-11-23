@@ -1,37 +1,40 @@
 # Harbor Bay
 
-[![make.fun GTA 6 bounty](https://make.fun/badge/gta6-01.svg)](https://make.fun/c/gta6-01)
-[![make.fun rank](https://make.fun/badge/gta6-01/yangzishuo6-creator/gta6-open-world/rank.svg)](https://make.fun/c/gta6-01)
-[![make.fun reward](https://make.fun/badge/gta6-01/yangzishuo6-creator/gta6-open-world/reward.svg)](https://make.fun/c/gta6-01)
+[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![rank](https://make.fun/badge/gta6-01/yangzishuo6-creator/gta6-open-world/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![reward](https://make.fun/badge/gta6-01/yangzishuo6-creator/gta6-open-world/reward.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
-The port authority buried a ledger. Nia knows where it is, and the courier they fired has one afternoon to get it on the air. Explore a 3D waterfront from Juniper Mile to Crown Heights, steal a ride, then outrun Port Patrol by street or by boardwalk.
+Harbor Bay is an offline third-person crime game set on the Juniper Mile waterfront. Fixer Nia and mechanic Ivo help you steal a Port Authority ledger that links a missing freighter to a string of payoffs. Follow the six-mission case, race down Bayfront, run courier jobs along the promenade, or take your chances with Port Patrol.
+
+![Aster Veloce pursued by Port Patrol on Bayfront](screenshots/1-chase.jpg)
 
 ## Play
 
-Run `node serve.ts` and open `http://localhost:8080` in desktop Chrome. Harbor Bay runs from static files with no build step or external assets.
+Run `node serve.ts` with Node.js 22 or newer and open `http://localhost:8080` in desktop Chrome. Choose **New Game** to meet Nia. **Continue** restores your last saved location and story stage. The game saves after stage transitions and allows manual saves from the pause menu.
 
 | Input | Action |
 | --- | --- |
-| WASD / arrows | Walk, steer, accelerate, or reverse |
-| Mouse / left click | Aim and fire on foot |
-| E | Interact, enter or exit a vehicle, or start an event |
-| 1–4 | Fists, pistol, SMG, shotgun |
-| Space | Sprint on foot or handbrake in a car |
-| Q / F | Nia's radio jam / Ivo's field repair |
-| R / M | Switch radio station / mute |
-| Esc | Pause |
-
-Follow the gold markers through six story missions. Cyan markers lead to the Coast Circuit street race and the Express Manifest courier sprint. Both events require a vehicle. Finishing stages and events earns XP, and their milestones save automatically. Use **Save & resume** in the pause menu for a manual checkpoint. **Continue** restores the checkpoint in the same browser.
+| W, A, S, D | Move or drive |
+| Shift / Space | Sprint / handbrake |
+| E | Enter, steal, or exit a nearby car |
+| Right mouse | Aim and turn the foot camera |
+| Left mouse | Fire while on foot |
+| 1–4 | Sidearm, Compact, Scatter, Carbine |
+| Q / F | Nia's diversion / Ivo's repair or armour |
+| R / C | Start the Juniper Circuit in a car / start the Pier Courier on foot |
+| T | Cycle radio stations |
+| Esc | Pause or resume |
 
 ## Source map
 
-- `world/cityBuilder.js`, `world/props.js` and `world/atmosphere.js` build and light the city.
-- `vehicles/vehicleController.js`, `vehicles/trafficSystem.js` and `actors/pedestrians.js` animate movement through the streets.
-- `police/dispatch.js`, `police/helicopter.js` and `combat/weapons.js` handle pursuits and combat.
-- `missions/storyMissions.js`, `missions/activities.js` and `missions/crew.js` handle jobs, rewards and crew abilities.
-- `ui/` renders the HUD, minimap, dialogue and menus. `audio/radio.js` synthesizes the radio and effects.
-- `core/` handles input, the chase camera and deterministic capture mode. `save/saveGame.js` handles checkpoints.
+| Path under `game/src/` | Job |
+| --- | --- |
+| `main.js`, `core/` | Browser loop, input, chase camera, scripted captures |
+| `world/` | Street grid, façades, coastal props, atmosphere and ocean |
+| `vehicles/`, `actors/` | Car models, arcade driving, traffic and pedestrians |
+| `police/`, `combat/` | Port Patrol tactics, air support and weapons |
+| `missions/` | Ledger case, activities and crew cooldowns |
+| `ui/` | HUD, local map, dialogue portraits and menus |
+| `audio/`, `save/` | Synth radio, sound effects and local progression |
 
-Open `/index.html?shot=chase`, `?shot=foot`, `?shot=mission` or `?shot=title` to render a fixed camera frame. Capture mode leaves the checkpoint untouched.
-
-Run `MAKEFUN_OUTPUT_DIR=out node main.ts` to package the game, screenshots, and make.fun dossier.
+Run `MAKEFUN_OUTPUT_DIR=out node main.ts` to package the game and screenshots and generate `out/dossier.json`.

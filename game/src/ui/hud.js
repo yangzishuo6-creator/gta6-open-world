@@ -1,44 +1,83 @@
-import {drawMinimap} from './minimap.js';
-import {districtAt} from '../world/cityBuilder.js';
-import {activityMarkers} from '../missions/activities.js';
+import {campaign,currentStage} from '../missions/storyMissions.js';
+import {activityPoint} from '../missions/activities.js';
+import {loadout} from '../combat/weapons.js';
+import {nearestRide} from '../vehicles/vehicleController.js';
+import {createDialogue} from './dialogue.js';
+import {createMinimap} from './minimap.js';
 
-const byId=id=>document.getElementById(id);
-const currency=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
-export function updateHUD(player,dispatch,target,crew,weapons,radio,cars,hint,position) {
-  byId('cash').textContent='$'+currency.format(player.cash);
-  byId('stars').innerHTML=Array.from({length:5},(_,i)=>'<span class="'+(i<dispatch.heat?'lit':'')+'">★</span>').join('');
-  byId('stars').setAttribute('aria-label',dispatch.heat+' wanted stars');
-  byId('district').textContent=districtAt(player.x,player.z);
-  const rank=1+Math.floor(player.xp/350);
-  byId('rank').textContent='RANK '+String(rank).padStart(2,'0');
-  byId('xp').textContent=(player.xp%350)+' / 350 XP';
-  byId('reputation').textContent=rank>=5?'RESPECTED':rank>=3?'KNOWN':'NEW ARRIVAL';
-  byId('xp-bar').style.width=(player.xp%350)/3.5+'%';
-  byId('dispatch').hidden=!dispatch.heat;
-  byId('unit-list').innerHTML=dispatch.units.filter(c=>c.active).map(c=>
-    '<li><b>'+c.id+'</b><span>'+c.tactic+'</span><strong>'+Math.round(Math.hypot(c.x-player.x,c.z-player.z))+' m</strong></li>').join('')
-    +(dispatch.heat>=4?'<li><b>AIR</b><span>Spotlight</span><strong>LIVE</strong></li>':'');
-  byId('mission-tag').textContent=target?.time!=null?'CHECKPOINT '+target.step+'/'+target.total:'STAGE '+(target?.step??'—')+'/'+(target?.total??'—');
-  byId('mission-name').textContent=target?.name??'Free Roam';
-  byId('mission-objective').textContent=target?.text??'Explore Harbor Bay';
-  byId('mission-bar').style.width=(target?target.step/target.total*100:100)+'%';
-  byId('mission-distance').textContent=target?(target.time!=null?
-    [position?'P'+position:'',Math.ceil(target.time)+' SEC'].filter(Boolean).join(' · '):
-    Math.round(Math.hypot(target.x-player.x,target.z-player.z))+' M'):'';
-  byId('health').style.width=Math.max(0,player.health)+'%';
-  byId('armor').style.width=Math.max(0,player.armor)+'%';
-  byId('weapons').innerHTML=weapons.slots.map((weapon,i)=>
-    '<div class="'+(i===weapons.slot?'selected':'')+'"><kbd>'+(i+1)+'</kbd><b>'+weapon.name+'</b><small>'+(i?weapon.ammo:'∞')+'</small></div>').join('');
-  byId('crew').innerHTML=crew.map(c=>'<div><kbd>'+c.key+'</kbd><span><b>'+c.name+'</b><small>'+c.skill+'</small></span><i class="'+(c.cooldown?'cool':'')+'">'+(c.cooldown?Math.ceil(c.cooldown)+'s':'●')+'</i></div>').join('');
-  byId('vehicle').hidden=!player.vehicle;
-  if(player.vehicle) {
-    byId('speed').textContent=String(Math.round(Math.abs(player.vehicle.speed)*3.6)).padStart(2,'0');
-    byId('car-name').textContent=player.vehicle.name;
-    byId('damage').textContent=Math.round(player.vehicle.damage)+'% DMG';
-    byId('speed-fill').style.width=Math.min(100,Math.abs(player.vehicle.speed)*100/43)+'%';
-  }
-  byId('radio').textContent=radio.label;
-  byId('interact').hidden=!hint;
-  byId('hint').textContent=hint;
-  drawMinimap(byId('map'),player,target,dispatch.units,cars,activityMarkers());
+export function createHUD() {
+  const nodes=new Map();
+  const get=id=>{
+    if (!nodes.has(id)) nodes.set(id,document.getElementById(id));
+    return nodes.get(id);
+  };
+  const set=(id,value)=>{
+    if (get(id).textContent!==String(value)) get(id).textContent=value;
+  };
+  const fill=(id,value)=>{ get(id).style.width=Math.min(100,value)+'%'; };
+  const dialogue=createDialogue();
+  const map=createMinimap();
+  const dollars=new Intl.NumberFormat('en-US');
+  const slots=loadout.map((weapon,i)=>{
+    const item=document.createElement('div');
+    item.className='panel slot';
+    item.innerHTML='<kbd>'+(i+1)+'</kbd>'+weapon.name;
+    get('slots').append(item);
+    return item;
+  });
+  return state=>{
+    const showing=state.mode==='play' || state.mode==='pause';
+    get('hud').hidden=!showing;
+    if (!showing) return;
+    const run=state.activity;
+    const mission=campaign[state.mission];
+    const step=currentStage(state);
+    const marker=run ? activityPoint(run) : step ? [step[1],step[2]] : null;
+    const p=state.position();
+    const distance=marker ? Math.round(Math.hypot(p.x-marker[0],p.z-marker[1])) : 0;
+    set('mission-tag',run ? 'SIDE ACTIVITY' : mission ? '◆ LEDGER CASE' : 'FREE ROAM');
+    set('mission-name',run ? run.kind==='race' ? 'Juniper Circuit' : 'Pier Courier' : mission?.title ?? 'Harbor Bay');
+    set('stage',run ? 'GATE '+(run.step+1)+' / '+(run.kind==='race' ? 6 : 5) : mission ? 'STAGE '+(state.stage+1)+'/'+mission.stages.length : 'CASE CLOSED');
+    set('objective',run ? 'Reach the next marker · '+Math.ceil(run.left)+'s' : step?.[0] ?? 'Explore Juniper Mile');
+    set('distance',marker ? distance+' m' : '—');
+    fill('stage-fill',run ? run.step/5*100 : mission ? (state.stage+.5)/mission.stages.length*100 : 100);
+    get('dispatch').hidden=!state.stars;
+    const units=state.units.slice(0,3).map(unit=>
+      '<div class="unit"><b>'+unit.id+'</b><span>'+unit.tactic+'</span><strong>'+
+      Math.round(unit.car.mesh.position.distanceTo(p))+' m</strong></div>');
+    if (state.stars>=4) units.push('<div class="unit air"><b>AIR-1</b><span>SPOTLIGHT</span><strong>'+
+      Math.round(state.heli.root.position.distanceTo(p))+' m</strong></div>');
+    get('units').innerHTML=units.join('');
+    set('cash','$'+dollars.format(state.cash));
+    get('stars').innerHTML='<b>'+'★'.repeat(state.stars)+'</b>'+'☆'.repeat(5-state.stars);
+    get('stars').setAttribute('aria-label',state.stars+' of 5 wanted stars');
+    const rank=Math.min(5,Math.floor(state.xp/800));
+    set('rank',['ROOKIE','RUNNER','WHEELHAND','FIXER','HARBOR ACE','LEGEND'][rank]);
+    set('xp',(state.xp%800)+' / 800 XP');
+    fill('xp-fill',state.xp%800/8);
+    set('nia-status',state.crew.nia ? Math.ceil(state.crew.nia)+'s' : 'READY');
+    set('ivo-status',state.crew.ivo ? Math.ceil(state.crew.ivo)+'s' : 'READY');
+    set('district',p.x<-78 ? 'CANNERY WARD' : 'JUNIPER MILE');
+    set('standing',state.stars ? '● CONTESTED' : '● ALL CLEAR');
+    fill('health',state.health);
+    fill('armour',state.armour);
+    get('telemetry').hidden=!state.car;
+    if (state.car) {
+      const kmh=Math.abs(state.car.speed)*3.6;
+      set('car-name',state.car.name);
+      set('gear',state.car.speed<0 ? 'R' : 'D'+Math.max(1,Math.ceil(kmh/34)));
+      set('speed',Math.round(kmh));
+      fill('speed-fill',kmh/1.5);
+      set('damage',Math.round(state.car.damage)+'%');
+      set('radio','♫  '+state.audio.label());
+    }
+    get('crosshair').hidden=Boolean(state.car || !(state.input.mouse.right || state.shot==='foot'));
+    slots.forEach((item,i)=>item.classList.toggle('active',state.slot===i));
+    const ride=!state.car && nearestRide(state);
+    const prompt=ride ? 'E  Take '+ride.name : !run && !state.shot ? state.car ? 'R  Juniper Circuit' : 'C  Pier Courier' : '';
+    get('prompt').hidden=!prompt;
+    set('prompt',prompt);
+    dialogue(state.message);
+    map(state,marker);
+  };
 }

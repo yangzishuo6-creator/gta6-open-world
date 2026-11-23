@@ -1,33 +1,82 @@
 import * as T from 'three';
-export function lightWaterfront(scene) {
-  scene.fog = new T.FogExp2(0xf5ba9f,.0036);
-  const sky = new T.Mesh(new T.SphereGeometry(460,32,16), new T.ShaderMaterial({
+
+export function lightHarbor(scene) {
+  scene.fog = new T.FogExp2(0xf6ba9f, .0033);
+  scene.add(new T.HemisphereLight(0xffe4dc, 0x9eaabc, 1.72));
+  const key = new T.DirectionalLight(0xffc18a, 2.75);
+  key.castShadow=true;
+  key.shadow.mapSize.set(2048,2048);
+  Object.assign(key.shadow.camera,{left:-69,right:69,top:69,bottom:-69,near:2,far:260});
+  key.shadow.camera.updateProjectionMatrix();
+  key.shadow.bias=-.00022;
+  key.shadow.normalBias=.026;
+  scene.add(key,key.target);
+  const sky = new T.Mesh(new T.SphereGeometry(690,48,24), new T.ShaderMaterial({
     side:T.BackSide, depthWrite:false,
-    vertexShader:`varying vec3 v; void main(){v=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-    fragmentShader:`varying vec3 v;
+    vertexShader:`
+      varying vec3 direction;
       void main(){
-        vec3 d=normalize(v);
-        float h=max(0.,d.y);
-        vec3 color=mix(vec3(1.,.64,.42),vec3(.30,.66,.84),smoothstep(0.,.62,h));
-        float cloud=sin(d.x*24.+sin(d.z*13.)*1.4)+sin(d.z*24.-d.x*12.)*.55;
-        color=mix(color,vec3(1.,.83,.76),smoothstep(.88,1.48,cloud)*smoothstep(.03,.17,h)*(1.-smoothstep(.17,.42,h))*.66);
-        float sun=length(d-normalize(vec3(.48,.15,1.)));
-        color+=vec3(.30,.16,.07)*exp(-sun*9.);
-        color=mix(color,vec3(1.,.98,.78),1.-smoothstep(.028,.032,sun));
-        gl_FragColor=vec4(color,1.);
-      }`
+        direction = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.);
+      }`,
+    fragmentShader:`
+      varying vec3 direction;
+      void main(){
+        vec3 n = normalize(direction);
+        vec3 s = normalize(vec3(.46,.115,-.89));
+        float d = distance(n,s);
+        vec3 c = mix(vec3(.99,.59,.41),vec3(.27,.52,.73),smoothstep(-.08,.57,n.y));
+        c += vec3(.32,.21,.09)*exp(-d*4.);
+        c += vec3(.30,.17,.08)*exp(-d*22.);
+        c = mix(c,vec3(1.,.94,.68),1.-smoothstep(.028,.033,d));
+        float bands = sin(n.y*140.+sin(n.x*11.)*1.6+sin(n.x*25.+n.y*19.)*.59)*.5+.5;
+        float fragments = sin(n.x*16.+n.z*6.+n.y*8.)*.65+sin(n.x*45.+n.y*11.)*.35;
+        float clouds = smoothstep(.55,1.,bands)*smoothstep(-.15,.82,fragments);
+        c = mix(c,vec3(1.,.79,.67),clouds*.48*(1.-smoothstep(.19,.45,n.y)));
+        gl_FragColor = vec4(c,1.);
+      }`,
   }));
-  scene.add(sky,new T.HemisphereLight(0xd9f4ff,0xb67762,2.05));
-  const sun = new T.DirectionalLight(0xffcf99,2.25);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048,2048);
-  Object.assign(sun.shadow.camera,{left:-63,right:63,top:63,bottom:-63,near:1,far:230});
-  sun.shadow.normalBias=.12;
-  sun.shadow.bias=-.00015;
-  scene.add(sun,sun.target);
-  return (x,z) => {
-    sky.position.set(x,0,z);
-    sun.position.set(x+45,63,z+22);
-    sun.target.position.set(x,0,z);
+  scene.add(sky);
+  return {
+    follow(p) {
+      const x=Math.round(p.x/2)*2;
+      const z=Math.round(p.z/2)*2;
+      key.position.set(x+65,57,z-89);
+      key.target.position.set(x,0,z);
+      sky.position.set(x,0,z);
+    },
   };
+}
+
+export function makeOcean(scene) {
+  const water = new T.Mesh(new T.PlaneGeometry(2700,3300),new T.ShaderMaterial({
+    transparent:true,
+    uniforms:{time:{value:0}},
+    vertexShader:`
+      varying vec3 p;
+      void main(){
+        p=(modelMatrix*vec4(position,1.)).xyz;
+        gl_Position=projectionMatrix*viewMatrix*vec4(p,1.);
+      }`,
+    fragmentShader:`
+      uniform float time;
+      varying vec3 p;
+      void main(){
+        float wave=sin(p.x*.61+sin(p.z*.112)*2.+time)+sin(p.z*.75+p.x*.42-time*.6);
+        vec3 sea=mix(vec3(.075,.39,.49),vec3(.38,.76,.71),exp(-max(0.,p.x-53.)*.024));
+        sea+=wave*.022;
+        float glint=pow(max(0.,sin(p.z*2.2+wave+p.x*.39)),19.);
+        float sparkle=exp(-abs(p.x-cameraPosition.x+(p.z-cameraPosition.z)*.52)*.027);
+        sea+=vec3(.68,.41,.20)*glint*.67*sparkle;
+        float shore=p.x-54.-sin(p.z*.19)*.62;
+        float surf=sin(shore*2.+sin(p.z*.32)-time);
+        sea=mix(sea,vec3(.88,.96,.83),smoothstep(.64,1.,surf)*exp(-abs(shore)*.34)*.85);
+        sea=mix(sea,vec3(.90,.63,.51),smoothstep(73.,950.,distance(cameraPosition,p)));
+        gl_FragColor=vec4(sea,1.-smoothstep(480.,1440.,distance(cameraPosition,p)));
+      }`,
+  }));
+  water.rotation.x = -Math.PI / 2;
+  water.position.set(330,-.21,0);
+  scene.add(water);
+  return water.material.uniforms.time;
 }

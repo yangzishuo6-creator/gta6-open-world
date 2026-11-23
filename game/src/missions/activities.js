@@ -1,32 +1,83 @@
-const events=[
-  {name:'The Coast Circuit',kind:'Street race',x:3,z:-48,payout:850,limit:59,
-    route:[[3,0],[3,48],[3,96],[-48,96],[-48,48],[-48,-48],[3,-48]]},
-  {name:'Express Manifest',kind:'Courier sprint',x:-92,z:144,payout:540,limit:40,
-    route:[[-96,96],[-48,96],[-48,48],[2,48],[12,66]]}
-];
-export function availableActivity(player) {
-  return events.find(e=>Math.hypot(e.x-player.x,e.z-player.z)<10);
+import * as T from 'three';
+import {box,lettering} from '../world/geometry.js';
+import {spawnCar} from '../vehicles/carModels.js';
+
+const routes={
+  race:[[3,48],[3,0],[3,-64],[3,-128],[3,-192],[3,-256]],
+  courier:[[16,27],[18,-8],[16,-56],[24,-103],[44,-103]],
+};
+
+export function makeCheckpoint(scene) {
+  const gate=new T.Group();
+  const aqua=0x41d4bc;
+  for (const x of [-5,5]) {
+    box(gate,aqua,x,2.7,0,.37,5.4,.43);
+    box(gate,0xffd081,x,.2,0,.89,.4,.89);
+    for (let i=0;i<6;i++) box(gate,0x284d58,x,.8+i*.7,.25,.39,.27,.13);
+  }
+  box(gate,aqua,0,5.48,0,10.4,.44,.56);
+  lettering(gate,'JUNIPER CIRCUIT','#f9f0c9','#214e58',7.0,1.15,0,5.5,.34);
+  scene.add(gate);
+  gate.visible=false;
+  return gate;
 }
-export function activityMarkers(){return events;}
-export function startActivity(event) {
-  return {event,index:0,time:event.limit};
+
+export function startActivity(state,kind) {
+  if (state.activity) return;
+  if ((kind==='race')!==Boolean(state.car)) {
+    state.speak('Ivo',kind==='race' ? 'Get a car first.' : 'Courier run is on foot.',3);
+    return;
+  }
+  const race=kind==='race';
+  const p=state.position();
+  const start=race ? 1 : 0;
+  const rivals=race ? [
+    spawnCar(state.scene,'Cinder GT',0xbd554f,-3,52,0),
+    spawnCar(state.scene,'Maris R',0x58aaa3,-.3,57,0),
+  ] : [];
+  if (race && !state.shot) {
+    p.set(3,0,59);
+    state.car.heading=state.car.mesh.rotation.y=0;
+    state.car.speed=0;
+    state.view.ready=false;
+  }
+  state.activity={kind,step:start,left:race ? 37 : 34,rivals};
+  state.speak('Ivo',race ? 'Bayfront is yours. Hit every gate before the other crews.' :
+    'Deliver the copy along the promenade before the buyer leaves.',7);
 }
-export function activityObjective(active) {
-  if(!active)return null;
-  const {event,index,time}=active;
-  const [x,z]=event.route[index];
-  return {name:event.name,text:event.kind==='Street race'?'Hit the next race checkpoint':'Deliver the sealed manifest',
-    x,z,step:index+1,total:event.route.length,time};
+
+export function activityPoint(activity) {
+  return activity ? routes[activity.kind][activity.step] : null;
 }
-export function tickActivity(active,player,dt,say,save) {
-  active.time-=dt;
-  if(active.time<=0){say('Time’s up. Return to the start to run it again.');return null;}
-  const target=activityObjective(active);
-  if(Math.hypot(player.x-target.x,player.z-target.z)>9||!player.vehicle)return active;
-  if(++active.index<active.event.route.length)return active;
-  player.cash+=active.event.payout;
-  player.xp+=250;
-  say('Clean run. I’ve sent your payout.');
-  save();
-  return null;
+
+export function updateActivities(state,dt) {
+  const run=state.activity;
+  state.gate.visible=run?.kind==='race';
+  if (!run) return;
+  run.left-=dt;
+  const p=state.position();
+  const [x,z]=activityPoint(run);
+  state.gate.position.set(x-3,0,z);
+  run.rivals.forEach((car,i)=>{
+    car.speed=Math.min(27+i*2,car.speed+dt*10);
+    car.mesh.position.z-=car.speed*dt;
+  });
+  if (Math.hypot(p.x-x,p.z-z)<(run.kind==='race' ? 9 : 5)) {
+    run.step++;
+    state.audio.effect(560,.1,'triangle');
+  }
+  const complete=run.step===routes[run.kind].length;
+  const lost=run.rivals.some(car=>car.mesh.position.z < -260);
+  if (complete || run.left<=0 || lost) {
+    if (complete) {
+      state.cash+=run.kind==='race' ? 850 : 420;
+      state.xp+=140;
+      state.save();
+    }
+    state.speak('Ivo',complete ? 'Clean finish. Check your cut.' :
+      lost ? 'A rival crossed first. There’s another heat when you’re ready.' : 'Clock ran out. Run it again when you’re ready.',6);
+    run.rivals.forEach(car=>state.scene.remove(car.mesh));
+    state.activity=null;
+    state.gate.visible=false;
+  }
 }

@@ -1,63 +1,69 @@
-import {makeVehicle,poseVehicle} from '../vehicles/carModels.js';
-import {canOccupy} from '../world/cityBuilder.js';
-import {buildHelicopter,updateHelicopter} from './helicopter.js';
+import {spawnCar,faceCar} from '../vehicles/carModels.js';
+import {isBlocked} from '../world/cityBuilder.js';
 
-const tactics=['Ramming','Flanking','Roadblock','Intercept','Backup'];
-export function makeDispatch(scene) {
-  const units=tactics.map((tactic,i)=>Object.assign(makeVehicle(scene,0x243751,{police:true}),
-    {tactic,id:'P-'+(12+i*7),active:false,disabled:0}));
-  return {units,air:buildHelicopter(scene),heat:0,quiet:0};
+const tactics=['RAMMING','FLANKING','ROADBLOCK','FLANKING','RAMMING'];
+
+export function addPatrol(state,i,x,z,heading=0) {
+  const car=spawnCar(state.scene,'Port Patrol',i%2 ? 0x293d54 : 0x233450,x,z,heading,'patrol');
+  const unit={id:'P-'+(12+i*7),tactic:tactics[i%tactics.length],car,cooldown:0};
+  state.units.push(unit);
+  return unit;
 }
-export function raiseWanted(dispatch,level) {
-  dispatch.heat=Math.max(dispatch.heat,Math.min(5,level));
-  dispatch.quiet=0;
-}
-export function tickDispatch(dispatch,player,dt,time,shot=false) {
-  const {units,air,heat}=dispatch;
-  const angle=player.vehicle?.heading??player.heading;
-  let nearest=Infinity;
-  units.forEach((car,i)=>{
-    car.disabled=Math.max(0,car.disabled-dt);
-    const active=i<[0,1,2,3,3,5][heat]&&car.disabled===0;
-    car.model.visible=active;
-    if(!active){car.active=false;return;}
-    const offset=shot?[[-4.65,-2.1],[4.85,2.0],[-4.9,22],[-3,40],[5,-12]][i]:[[(i%2?1:-1)*5,-24],[6,-30],[-5,57],[-6,-39],[7,-46]][i];
-    const [lateral,depth]=offset;
-    const tx=player.x+Math.sin(angle)*depth+Math.cos(angle)*lateral;
-    const tz=player.z+Math.cos(angle)*depth-Math.sin(angle)*lateral;
-    if(!car.active||shot) {
-      const roadblock=i===2&&!shot;
-      car.x=roadblock?Math.min(0,Math.max(-192,Math.round(tx/48)*48))+1:tx;
-      car.z=roadblock?Math.min(288,Math.max(-288,Math.round(tz/48)*48)):tz;
-      car.heading=angle+(i===2?1.38:shot?(i===0?.10:-.08):0);
-      car.active=true;
-    }
-    const distance=Math.hypot(player.x-car.x,player.z-car.z);
-    nearest=Math.min(nearest,distance);
-    if(!shot) {
-      const roadblock=i===2;
-      if(roadblock&&distance>105)car.active=false;
-      const destinationX=player.x+(i===1?Math.cos(angle)*4+Math.sin(angle)*6:0);
-      const destinationZ=player.z+(i===1?-Math.sin(angle)*4+Math.cos(angle)*6:0);
-      const target=Math.atan2(destinationX-car.x,destinationZ-car.z);
-      const turn=Math.atan2(Math.sin(target-car.heading),Math.cos(target-car.heading));
-      if(!roadblock)car.heading+=Math.max(-2.1*dt,Math.min(2.1*dt,turn));
-      const speed=roadblock?0:11+heat*5;
-      const x=car.x+Math.sin(car.heading)*dt*speed,z=car.z+Math.cos(car.heading)*dt*speed;
-      if(canOccupy(x,z,1)){ car.x=x;car.z=z; }
-      else car.heading+=dt*2.5;
-      if(distance<3.35) {
-        if(player.vehicle) {
-          player.vehicle.damage=Math.min(100,player.vehicle.damage+dt*(i===0?19:11));
-          player.vehicle.speed*=Math.exp(-.7*dt);
-        } else player.health-=dt*11;
-      }
-    }
-    poseVehicle(car,time);
-  });
-  if(!shot&&heat) {
-    dispatch.quiet=nearest>34?dispatch.quiet+dt:Math.max(0,dispatch.quiet-dt*2);
-    if(dispatch.quiet>12){dispatch.heat--;dispatch.quiet=0;}
+
+export function updateDispatch(state,dt) {
+  const target=state.position();
+  const wanted=state.stars ? Math.min(5,state.stars+1) : 0;
+  while (state.units.length>wanted) state.scene.remove(state.units.pop().car.mesh);
+  if (state.units.length<wanted && !state.shot) {
+    const i=state.units.length;
+    const lane=Math.max(-208,Math.min(0,Math.round(target.x/52)*52));
+    const z=Math.max(-330,Math.min(275,target.z+(i===2 ? -70 : 39+i*12)));
+    addPatrol(state,i,lane+(i%2 ? -5 : 4),z);
   }
-  updateHelicopter(air,player,heat,time,dt,shot);
+  let closest=Infinity;
+  for (let i=0;i<state.units.length;i++) {
+    const unit=state.units[i];
+    const car=unit.car;
+    const pos=car.mesh.position;
+    const gap=pos.distanceTo(target);
+    closest=Math.min(closest,gap);
+    const heading=state.car?.heading ?? state.hero.heading;
+    const side=unit.tactic==='FLANKING' ? (i%2 ? -4.1 : 4.1) : 0;
+    const lead=unit.tactic==='ROADBLOCK' ? 22 : side ? 5 : 0;
+    const x=target.x-Math.sin(heading)*lead+Math.cos(heading)*side;
+    const z=target.z-Math.cos(heading)*lead-Math.sin(heading)*side;
+    const aim=Math.atan2(pos.x-x,pos.z-z);
+    const delta=Math.atan2(Math.sin(aim-car.heading),Math.cos(aim-car.heading));
+    const pace=state.shot==='chase' && i<2 ? state.car.speed-1.65 :
+      unit.tactic==='ROADBLOCK' && Math.hypot(pos.x-x,pos.z-z)<5 ? 0 : Math.min(42,10+gap*1.35);
+    car.speed+=(pace-car.speed)*dt*1.82;
+    const steer=state.shot==='chase' && i<2 ? -car.heading : delta;
+    faceCar(car,car.heading+Math.max(-2.4,Math.min(2.4,steer*3))*dt);
+    const nx=pos.x-Math.sin(car.heading)*car.speed*dt;
+    const nz=pos.z-Math.cos(car.heading)*car.speed*dt;
+    if (!isBlocked(state.lots,nx,nz,1)) {
+      pos.x=nx;
+      pos.z=nz;
+    } else {
+      faceCar(car,car.heading+2*dt);
+      car.speed*=.9;
+    }
+    car.lights.forEach((lamp,n)=>lamp.scale.y=.21*(1+.25*Math.sin(state.time*20+n*Math.PI)));
+    unit.cooldown-=dt;
+    if (!state.shot && gap<2.6 && unit.cooldown<=0) {
+      unit.cooldown=1.15;
+      if (state.car) {
+        state.car.damage=Math.min(100,state.car.damage+7+state.stars);
+        state.car.speed*=.78;
+      } else state.damagePlayer(8+state.stars*2);
+      state.audio.effect(75,.18,'sawtooth');
+    }
+  }
+  if (state.stars && !state.shot) {
+    state.heat-=dt*(closest>45 ? 1 : .18);
+    if (state.heat<=0) {
+      state.stars--;
+      state.heat=18;
+    }
+  }
 }

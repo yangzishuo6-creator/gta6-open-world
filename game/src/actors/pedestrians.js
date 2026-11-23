@@ -1,73 +1,113 @@
 import * as T from 'three';
-import {box,material,seededRandom} from '../world/geometry.js';
-import {canOccupy} from '../world/cityBuilder.js';
+import {box,paint,noise} from '../world/geometry.js';
+import {isBlocked} from '../world/cityBuilder.js';
 
-const head=new T.SphereGeometry(.17,9,7);
-export function makePerson(scene,shirt=0xd55144,index=0) {
-  const group=new T.Group();
-  const skin=[0xc58b60,0x8e5338,0xedb78e,0xae6f52][index%4];
-  const legs=[],arms=[];
-  box(group,shirt,0,1.13,0,.46,.55,.27);
-  box(group,0x242b3d,0,.85,0,.40,.15,.29);
-  const face=new T.Mesh(head,material(skin));
-  face.position.set(0,1.61,.01);
-  group.add(face);
-  box(group,0x302426,0,1.72,-.035,.29,.13,.24);
-  for(const side of [-1,1]) {
+const headShape=new T.IcosahedronGeometry(.245,1);
+const disc=new T.CircleGeometry(.63,18);
+const skin=[0xbb785c,0x8a4d3d,0xe4ad83,0x704839];
+const outfits=[0x378e84,0xe69070,0xf0ce78,0x6a7895,0xe3d7af,0x9b596a];
+
+export function makePerson(scene,x,z,jacket=0x3f7775,seed=0) {
+  const mesh=new T.Group();
+  const shade=new T.Mesh(disc,new T.MeshBasicMaterial({color:0x3d3841,opacity:.23,transparent:true,depthWrite:false}));
+  shade.rotation.x=-Math.PI/2;
+  shade.position.y=.021;
+  shade.scale.set(1,.53,1);
+  mesh.add(shade);
+  const body=new T.Group();
+  body.position.y=.12;
+  mesh.add(body);
+  const tone=skin[seed%skin.length];
+  const head=new T.Mesh(headShape,paint(tone));
+  head.position.set(0,1.72,-.02);
+  body.add(head);
+  const hair=new T.Mesh(headShape,paint(0x302833));
+  hair.position.set(0,1.84,.045);
+  hair.scale.set(1,.73,.91);
+  body.add(hair);
+  box(body,jacket,0,1.19,0,.59,.68,.36);
+  box(body,0xddc2a1,0,1.37,.185,.17,.12,.035);
+  box(body,0x343a49,0,.86,0,.51,.19,.33);
+  const legs=[];
+  const arms=[];
+  for (const side of [-1,1]) {
     const leg=new T.Group();
-    leg.position.set(side*.12,.84,0);
-    box(leg,0x293949,0,-.31,0,.18,.68,.19);
-    box(leg,0xf2e1c9,0,-.69,.045,.20,.16,.28);
+    leg.position.set(side*.145,.87,0);
+    box(leg,0x343a49,0,-.37,0,.23,.72,.24);
+    box(leg,0xe2dbbe,0,-.76,-.052,.245,.14,.35);
+    body.add(leg);
     legs.push(leg);
-    group.add(leg);
     const arm=new T.Group();
-    arm.position.set(side*.30,1.37,0);
-    box(arm,shirt,0,-.10,0,.16,.24,.18);
-    box(arm,skin,0,-.32,0,.13,.30,.14);
+    arm.position.set(side*.34,1.46,0);
+    box(arm,jacket,0,-.13,0,.183,.29,.21);
+    box(arm,tone,0,-.39,-.015,.142,.28,.16);
+    body.add(arm);
     arms.push(arm);
-    group.add(arm);
   }
-  const weapon=box(group,0x222934,.27,1.15,.51,.12,.12,.48);
-  weapon.visible=false;
-  scene.add(group);
-  return {group,legs,arms,weapon,x:0,z:0,heading:0};
+  const gun=new T.Group();
+  gun.position.set(.06,-.49,-.13);
+  arms[1].add(gun);
+  box(gun,0x243039,0,-.20,0,.16,.54,.20);
+  box(gun,0x515c61,0,-.45,-.007,.10,.23,.10);
+  box(gun,0x27323c,0,-.16,.16,.13,.15,.23).rotation.x=.15;
+  gun.visible=false;
+  mesh.position.set(x,0,z);
+  scene.add(mesh);
+  return {mesh,body,arms,legs,gun,heading:0,phase:0,down:0};
 }
-export function posePerson(person,phase,moving,aim=false) {
-  const swing=moving?Math.sin(phase)*.55:0;
-  person.group.position.set(person.x,0,person.z);
-  person.group.rotation.y=person.heading;
-  person.legs.forEach((leg,i)=>leg.rotation.x=swing*(i?1:-1));
-  person.arms.forEach((arm,i)=>arm.rotation.x=aim&&i===1?-1.28:swing*(i?-1:1));
-  person.weapon.visible=aim;
+
+export function stride(person,speed,dt,aim=false) {
+  person.phase+=dt*(3+speed*1.45);
+  const swing=Math.sin(person.phase)*Math.min(.67,speed*.13);
+  person.legs[0].rotation.x=swing;
+  person.legs[1].rotation.x=-swing;
+  person.arms[0].rotation.x=aim ? 1.26 : -swing*.67;
+  person.arms[1].rotation.x=aim ? 1.69 : swing*.67;
+  person.arms[1].rotation.z=aim ? .18 : 0;
+  person.gun.visible=aim;
+  person.mesh.rotation.y=person.heading;
+  person.body.position.y=.11+Math.abs(swing)*.09;
 }
-export function spawnPedestrians(scene) {
-  const rng=seededRandom(92);
-  return Array.from({length:86},(_,i)=>{
-    const person=makePerson(scene,[0xdca24e,0x529989,0xca5e55,0xeedec7,0x6d5790][i%5],i);
-    const x=i<50?(i%3===0?-8.5:11+i%4):-56-(i%3)*48;
-    return Object.assign(person,{x,z:i<15?-17+i*6:rng()*575-287,heading:i%2?0:Math.PI,pace:1+rng()*.9});
-  });
+
+export function populateWalkers(scene) {
+  const people=[];
+  for (let i=0;i<46;i++) {
+    const x=i%4===0 ? -13.5 : 13+noise(i)*7;
+    const person=makePerson(scene,x,249-(i*19.71)%568,outfits[i%outfits.length],i);
+    person.heading=i%2 ? 0 : Math.PI;
+    people.push(person);
+  }
+  return people;
 }
-export function updatePedestrians(pedestrians,player,time,dt,heat) {
-  for(const person of pedestrians) {
-    const distance=Math.hypot(player.x-person.x,player.z-person.z);
-    person.group.visible=distance<118;
-    if(!person.group.visible)continue;
-    const pace=person.pace*(heat&&distance<15?1.9:1);
-    person.z+=Math.cos(person.heading)*pace*dt;
-    if(Math.abs(person.z)>290||!canOccupy(person.x,person.z))person.heading+=Math.PI;
-    posePerson(person,time*pace*4,true);
+
+export function urbanWalk(state,dt) {
+  for (const person of state.people) {
+    if (person.down>0) {
+      person.down-=dt;
+      person.body.rotation.z=1.55;
+      continue;
+    }
+    person.body.rotation.z=0;
+    const pace=state.stars && person.mesh.position.distanceTo(state.position())<22 ? 3.8 : 1.23;
+    person.mesh.position.z-=Math.cos(person.heading)*pace*dt;
+    if (Math.abs(person.mesh.position.z)>325) person.heading=person.heading ? 0 : Math.PI;
+    stride(person,pace,dt);
   }
 }
-export function movePlayer(player,input,cameraHeading,dt) {
-  const forward=Number(input.down('KeyW','ArrowUp'))-Number(input.down('KeyS','ArrowDown'));
-  const side=Number(input.down('KeyD','ArrowRight'))-Number(input.down('KeyA','ArrowLeft'));
-  const dx=Math.sin(cameraHeading)*forward-Math.cos(cameraHeading)*side;
-  const dz=Math.cos(cameraHeading)*forward+Math.sin(cameraHeading)*side;
-  const length=Math.hypot(dx,dz);
-  if(!length)return false;
-  const step=(input.down('ShiftLeft','Space')?8.5:4.6)*dt/length;
-  if(canOccupy(player.x+dx*step,player.z))player.x+=dx*step;
-  if(canOccupy(player.x,player.z+dz*step))player.z+=dz*step;
-  return true;
+
+export function walkPlayer(state,input,dt) {
+  const person=state.hero;
+  const forward=input.axis('KeyW','KeyS');
+  const lateral=input.axis('KeyD','KeyA');
+  const pace=input.down('ShiftLeft') ? 11 : 6;
+  const cameraAngle=state.view.heading;
+  const scale=pace*dt/Math.max(1,Math.hypot(forward,lateral));
+  const dx=(-Math.sin(cameraAngle)*forward+Math.cos(cameraAngle)*lateral)*scale;
+  const dz=(-Math.cos(cameraAngle)*forward-Math.sin(cameraAngle)*lateral)*scale;
+  const pos=person.mesh.position;
+  if (!isBlocked(state.lots,pos.x+dx,pos.z)) pos.x+=dx;
+  if (!isBlocked(state.lots,pos.x,pos.z+dz)) pos.z+=dz;
+  const aim=input.mouse.right || input.mouse.left || state.shot==='foot';
+  person.heading=cameraAngle;
+  stride(person,Math.hypot(dx,dz)/dt,dt,aim);
 }

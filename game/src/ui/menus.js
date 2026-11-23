@@ -1,44 +1,53 @@
-export const controls=[
-  ['WASD / arrows','Move or drive'],['Mouse / click','Aim and fire'],['E','Enter, exit or interact'],
-  ['1–4','Select weapon'],['Space','Sprint or handbrake'],['Q / F','Crew jam / repair'],
-  ['R / M','Change station / mute'],['Esc','Pause']
+import {loadGame} from '../save/saveGame.js';
+
+const bindings=[
+  ['W A S D','Move / drive'],['Shift','Sprint'],['Space','Handbrake'],
+  ['E','Enter, steal, or exit a car'],['Right mouse','Aim and turn camera'],['Left mouse','Fire'],
+  ['1–4','Select weapon'],['Q / F','Nia diversion / Ivo repair or armour'],
+  ['R / C','Juniper Circuit / Pier Courier'],['T','Cycle radio'],['Esc','Pause'],
 ];
-export function makeMenus({newGame,resume,canContinue,save}) {
-  const menu=document.querySelector('#menu'), list=document.querySelector('#menu-actions');
-  const heading=document.querySelector('#menu-heading'), label=document.querySelector('#menu-label');
-  let page='title';
-  function button(text,action,disabled=false) {
-    const node=document.createElement('button');
-    node.textContent=text;node.disabled=disabled;node.onclick=action;list.append(node);
-  }
-  function show(mode) {
-    page=mode;
-    menu.hidden=mode==='play';
-    menu.classList.toggle('paused',mode.startsWith('pause'));
-    document.querySelector('#hud').hidden=mode!=='play';
-    list.replaceChildren();
-    if(mode==='play')return;
-    if(mode.includes('controls')) {
-      label.textContent='Harbor Bay';
-      heading.textContent='Controls';
-      const dl=document.createElement('dl');
-      for(const [key,description] of controls)dl.append(Object.assign(document.createElement('dt'),{textContent:key}),Object.assign(document.createElement('dd'),{textContent:description}));
-      list.append(dl);
-      button('Back',()=>show(mode.startsWith('pause')?'pause':'title'));
-    } else if(mode==='title') {
-      label.textContent='THE PORT AUTHORITY FILES';
-      heading.innerHTML='Harbor<br><em>Bay</em>';
-      button('New game',()=>newGame(false));
-      button('Continue',()=>newGame(true),!canContinue());
-      button('Controls',()=>show('title-controls'));
-    } else {
-      label.textContent='Harbor Bay';
-      heading.textContent='Paused';
-      button('Resume',resume);
-      button('Save & resume',()=>{save();resume();});
-      button('Controls',()=>show('pause-controls'));
-      button('Main menu',()=>show('title'));
+
+export function createMenus(state) {
+  const root=document.getElementById('menu');
+  function show(screen) {
+    if (screen==='play') {
+      root.hidden=true;
+      return;
     }
+    document.exitPointerLock?.();
+    root.hidden=false;
+    root.innerHTML='';
+    const card=document.createElement('div');
+    card.className='menu-card';
+    root.append(card);
+    const buttons=document.createElement('div');
+    buttons.className='menu-actions';
+    function button(label,onClick,disabled=false) {
+      const item=document.createElement('button');
+      item.textContent=label;
+      item.disabled=disabled;
+      item.addEventListener('click',onClick);
+      buttons.append(item);
+      return item;
+    }
+    if (screen==='title') {
+      card.innerHTML='<div class="micro">JUNIPER MILE · PORT DISTRICT</div><h1>Harbor<br><em>Bay</em></h1><p>Steal the ledger that runs the waterfront.</p>';
+      button('New Game',()=>state.start(null));
+      const save=loadGame();
+      button('Continue',()=>state.start(save),!save);
+      button('Controls',()=>show('controls'));
+    } else if (screen==='controls') {
+      card.innerHTML='<div class="micro">HARBOR BAY</div><h2>Controls</h2><ul class="controls">'+bindings.map(
+        ([key,action])=>'<li><b>'+key+'</b>'+action+'</li>').join('')+'</ul>';
+      button('Back',()=>show(state.mode));
+    } else {
+      card.innerHTML='<div class="micro">HARBOR BAY</div><h2>Paused</h2>';
+      button('Resume',()=>state.resume());
+      const save=button('Save Game',()=>{ save.textContent=state.save() ? 'Game saved' : 'Save unavailable'; });
+      button('Controls',()=>show('controls'));
+      button('Main Menu',()=>state.title());
+    }
+    card.append(buttons);
   }
-  return {show,get page(){return page;}};
+  return show;
 }

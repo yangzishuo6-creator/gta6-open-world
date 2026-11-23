@@ -1,20 +1,46 @@
 import * as T from 'three';
-export function followPlayer(camera,player,dt,mode,walkingHeading=player.heading) {
-  const heading=player.vehicle?.heading ?? walkingHeading;
-  const forward=new T.Vector3(Math.sin(heading),0,Math.cos(heading));
-  const side=new T.Vector3(Math.cos(heading),0,-Math.sin(heading));
-  const origin=new T.Vector3(player.x,0,player.z);
-  const position=origin.clone().addScaledVector(forward,player.vehicle?-10.4:-5.1)
-    .addScaledVector(side,player.vehicle?-2.25:-1.7);
-  position.y=player.vehicle?4.2:2.75;
-  const target=origin.clone().addScaledVector(forward,player.vehicle?14:12);
-  target.y=player.vehicle?3.7:3.0;
-  if(mode==='title') {
-    position.set(-32,27,-55);
-    target.set(24,8,105);
+
+export function createView() {
+  const camera=new T.PerspectiveCamera(61,1,.12,1800);
+  return {camera,heading:0,ready:false};
+}
+
+export function followPlayer(state,dt) {
+  const {view,car}=state;
+  const camera=view.camera;
+  if (state.mode==='title' || state.shot==='title') {
+    camera.position.set(27,27,-34);
+    camera.lookAt(5,8,-139);
+    return;
   }
-  camera.position.lerp(position,1-Math.exp(-8*dt));
-  camera.lookAt(target);
-  camera.fov=T.MathUtils.lerp(camera.fov,player.vehicle?62+Math.abs(player.vehicle.speed)*.14:62,1-Math.exp(-3*dt));
-  camera.updateProjectionMatrix();
+  const p=state.position();
+  if (car) view.heading=car.heading;
+  else view.heading-=state.input.mouse.dx*.004;
+  const angle=view.heading;
+  const fx=-Math.sin(angle);
+  const fz=-Math.cos(angle);
+  const foot=state.shot==='foot';
+  const chase=state.shot==='chase';
+  const race=state.shot==='race';
+  const back=chase ? 16 : race ? 10.5 : car ? 8.5 : foot ? 5.7 : 4.8;
+  const side=chase ? -3.7 : car ? .3 : foot ? 1.23 : -1.20;
+  const sideX=Math.cos(angle)*side;
+  const sideZ=-Math.sin(angle)*side;
+  const ideal=new T.Vector3(p.x-fx*back+sideX,car ? chase ? 7.6 : 4.1 : foot ? 3.75 : 4.15,p.z-fz*back+sideZ);
+  let obstructed=false;
+  for (let i=1;i<=7;i++) {
+    const x=T.MathUtils.lerp(p.x,ideal.x,i/7);
+    const z=T.MathUtils.lerp(p.z,ideal.z,i/7);
+    if (state.lots.some(lot=>Math.abs(x-lot.x)<lot.w/2+1.15 && Math.abs(z-lot.z)<lot.d/2+1.15)) {
+      obstructed=true;
+      ideal.x=T.MathUtils.lerp(p.x,ideal.x,(i-1)/7);
+      ideal.z=T.MathUtils.lerp(p.z,ideal.z,(i-1)/7);
+      ideal.y=5.2;
+      break;
+    }
+  }
+  camera.position.lerp(ideal,view.ready && !obstructed ? 1-Math.exp(-dt*10) : 1);
+  const lead=foot ? 8 : chase ? 14 : 17;
+  camera.lookAt(p.x+fx*lead+(chase ? 3.2 : 0),car ? chase ? 3.35 : 2.5 : foot ? 1.71 : 2.25,p.z+fz*lead);
+  view.ready=true;
 }

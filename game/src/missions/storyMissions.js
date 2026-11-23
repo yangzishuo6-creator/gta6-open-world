@@ -1,50 +1,66 @@
-export const story=[
-  {name:'The Dead Drop',cash:650,stages:[
-    ['Meet Nia at Juniper Mile',-8,7,'use','The Authority wiped my badge. They missed a copy of the manifest.'],
-    ['Collect the burner at Beacon Boardwalk',12,39,'use','Take the burner. I’ll point you to the right container.'],
-    ['Reach the Port Exchange garage',-47,48,'visit','I left a Vela in the turnout. It’s yours.']]},
-  {name:'Paper Harbor',cash:900,stages:[
-    ['Pick up the container key',-93,48,'use','Container 17. The key still works.'],
-    ['Reach the bonded warehouse',-144,96,'visit','They moved the ledger into a bonded customs bay.'],
-    ['Copy the seal register',-146,104,'use','I need every seal number before we touch the ledger.'],
-    ['Take the register to Nia',-96,144,'use','Those seals belong to the commissioner’s private fleet.']]},
-  {name:'Ledger Run',cash:2450,stages:[
-    ['Reach the customs lot',-48,96,'visit','We have a short window. Go.'],
-    ['Lift the port authority ledger',-48,104,'use','I see it in your feed. Get the original.',4],
-    ['Bring the ledger to Beacon Pier',3,101,'visit','They’ve put units on the coast road. I’ll meet you on the pier.'],
-    ['Hand the ledger to Nia',32,105,'use','The whole city is about to learn whose boats those are.']]},
-  {name:'Borrowed Frequency',cash:1350,stages:[
-    ['Recover the transmitter',-42,151,'use','The main station went dark. We’ll make our own signal.'],
-    ['Reach the Crown Heights relay',-143,192,'visit','Stay on the upper grid. I can jam one radio band.'],
-    ['Patch the transmitter into the relay',-146,196,'use','Channel is open. Find me somewhere safe to read it.',2]]},
-  {name:'Ghost Fleet',cash:1800,stages:[
-    ['Meet the harbor pilot',11,170,'use','The pilot kept a second set of books.'],
-    ['Recover the pilot’s log',-49,192,'use','That log puts the commissioner aboard on every run.',3],
-    ['Return to the boardwalk',12,147,'visit','Put the log and ledger side by side. We’re ready.']]},
-  {name:'Open Channel',cash:4200,stages:[
-    ['Reach the waterfront broadcast post',-3,240,'visit','Start the broadcast where everyone can see it.'],
-    ['Upload the ledger and the pilot’s log',10,238,'use','We’re live. Keep driving until the whole file goes out.',5],
-    ['Keep moving to the southern relay',-94,144,'visit','Ninety percent. Make it past the patrols.'],
-    ['Meet Nia on the pier',36,105,'use','The files are public. Harbor Bay gets its harbor back.']]}
+export const campaign=[
+  {title:'A Favor at Low Tide',pay:750,stages:[
+    ['Meet Nia on the promenade',15,18,'arrive','Port Authority paid somebody to make a freighter disappear. I need to know who.'],
+    ['Borrow a car with E',7.7,42,'car','There’s a car on the curb. Ivo can deal with the plates later.'],
+    ['Bring the car to Ivo',-9,-67,'arrive','Take it to Ivo Motor Co. He’ll fit a receiver.'],
+  ]},
+  {title:'The Ghost Manifest',pay:1350,stages:[
+    ['Scan the first dock reader',18,-103,'arrive','The pier reader still has power. Get close enough to copy the manifest.'],
+    ['Pick up the paper manifest',-52,-128,'arrive','There’s a paper copy in the old loading lane. That one has names.'],
+    ['Return the manifest to Nia',16,-55,'arrive','Bring it to me before the shift changes.'],
+  ]},
+  {title:'Shift Change',pay:1800,stages:[
+    ['Reach the Port Patrol depot',-104,-192,'arrive','The deputy keeps a spare archive key in his locker.'],
+    ['Take the archive key on foot',-108,-200,'foot','Leave your ride and walk in from the service road.'],
+    ['Shake the Port Patrol tail',-52,-64,'lose','They logged the missing key. Lose the tail before you call.'],
+  ]},
+  {title:'The Breakwater Job',pay:3100,stages:[
+    ['Meet Ivo for the break-in',-52,-64,'arrive','Ivo opened the service gate. Get to the records room before Patrol changes shifts.'],
+    ['Lift the port ledger',-104,-128,'foot','That ledger names every payout. Get it out of the archive.'],
+    ['Lose Port Patrol on Bayfront',4,-104,'lose','Take the coast road. Ivo left a clean car by the pier.'],
+    ['Deliver the ledger to Nia',16,-233,'arrive','I found us a sympathetic reporter. Bring the ledger to Juniper.'],
+  ]},
+  {title:'A Clean Copy',pay:4200,stages:[
+    ['Get an aerial at the hotel',-52,0,'arrive','The reporter won’t touch the original. We need to transmit a copy.'],
+    ['Transmit from the pier',44,-103,'foot','Hold the receiver out over the water. Ivo’s listening.'],
+    ['Reach Ivo’s safe curb',-9,-67,'arrive','Copy received. Get off the waterfront.'],
+  ]},
+  {title:'Harbor Lights',pay:6500,stages:[
+    ['Collect Nia’s recording',16,-233,'arrive','The deputy’s voice is on this tape. We can tie him to the ledger.'],
+    ['Escape the harbor lockdown',-156,-256,'lose','They sent everyone. Don’t lead them to the reporter.'],
+    ['Deliver the recording to Bay Social',-9,58,'arrive','The whole city gets to hear it tonight. See you at Bay Social.'],
+  ]},
 ];
-export function currentObjective(state) {
-  const mission=story[state.chapter];
-  if(!mission)return null;
-  const [text,x,z,action,line,heat]=mission.stages[state.stage];
-  return {name:mission.name,text,x,z,action,line,heat,step:state.stage+1,total:mission.stages.length};
+
+export function currentStage(state) {
+  return campaign[state.mission]?.stages[state.stage];
 }
-export function tickStory(state,player,input,raiseHeat,say,save) {
-  const target=currentObjective(state);
-  if(!target||Math.hypot(player.x-target.x,player.z-target.z)> (target.action==='use'?6.5:12))return false;
-  if(target.action==='use'&&!input.tap('KeyE'))return false;
-  player.xp+=115;
-  say(target.line);
-  if(target.heat)raiseHeat(target.heat);
-  if(++state.stage===target.total){
-    player.cash+=story[state.chapter].cash;
-    state.chapter++;
+
+export function announceStage(state) {
+  const stage=currentStage(state);
+  if (stage) state.speak('Nia',stage[4],8);
+}
+
+export function advanceStory(state) {
+  const mission=campaign[state.mission];
+  const step=currentStage(state);
+  if (!step || state.activity) return;
+  const [,, ,kind]=step;
+  const pos=state.position();
+  const near=Math.hypot(pos.x-step[1],pos.z-step[2])< (kind==='lose' ? 120 : 9);
+  const done=kind==='car' ? Boolean(state.car) :
+    near && (kind==='lose' ? state.stars===0 : kind==='foot' ? !state.car : true);
+  if (!done) return;
+  state.stage++;
+  if (state.stage===mission.stages.length) {
+    state.cash+=mission.pay;
+    state.xp+=220+state.mission*55;
+    state.mission++;
     state.stage=0;
+    state.audio.effect(440,.35,'triangle');
+    if (!currentStage(state)) state.speak('Nia','The recording is public. Juniper belongs to its people again.',12);
   }
-  save();
-  return target.action==='use';
+  if (currentStage(state)?.[3]==='lose') state.alert(state.mission===5 ? 5 : state.mission===3 ? 4 : 2,18);
+  announceStage(state);
+  state.save();
 }

@@ -1,16 +1,26 @@
-const key='harbor-bay-3d-v1';
-export function loadSave() {
+const key='harbor-bay-save-v1';
+
+export function loadGame() {
   try {
-    const saved=JSON.parse(localStorage.getItem(key));
-    return saved?.version===1?saved:null;
-  } catch {return null;}
+    const save=JSON.parse(localStorage.getItem(key));
+    if (!save || save.version!==1) return null;
+    return save;
+  } catch {
+    return null;
+  }
 }
-export function saveGame(story,player,weapons) {
+
+export function saveGame(state) {
+  if (state.shot || state.mode==='title') return false;
+  const pos=state.position();
   try {
-    localStorage.setItem(key,JSON.stringify({version:1,chapter:story.chapter,stage:story.stage,
-      x:player.x,z:player.z,cash:player.cash,xp:player.xp,health:player.health,armor:player.armor,
-      ownedCar:player.vehicle?{name:player.vehicle.name,damage:player.vehicle.damage}:null,
-      ammo:weapons.slots.slice(1).map(item=>item.ammo)}));
+    localStorage.setItem(key,JSON.stringify({
+      version:1,x:pos.x,z:pos.z,heading:state.view.heading,
+      cash:state.cash,xp:state.xp,mission:state.mission,stage:state.stage,
+      health:state.health,armour:state.armour,
+    }));
     return true;
-  } catch {return false;}
+  } catch {
+    return false;
+  }
 }

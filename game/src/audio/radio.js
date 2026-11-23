@@ -1,37 +1,60 @@
 const stations=[
-  {name:'89.3  Shoreline FM',notes:[48,55,60,63,50,57,62,65],beat:.28,style:'triangle'},
-  {name:'104.7  Port After Dark',notes:[43,43,50,58,46,53,55,58],beat:.21,style:'sine'},
-  {name:'96.1  Juniper Jazz',notes:[51,58,62,65,53,60,63,67],beat:.33,style:'triangle'}
+  {name:'88.5  COASTLINE FM',bass:[45,45,48,43,45,52,48,43],lead:[69,72,76,74,67,72,69,64],beat:.24},
+  {name:'103.1  NIGHT FERRY',bass:[41,41,48,44,46,46,51,43],lead:[65,72,77,75,70,73,75,67],beat:.31},
+  {name:'RADIO OFF',bass:[],lead:[],beat:.3},
 ];
-export function makeRadio() {
-  let context;
-  let index=0,mute=false,next=0,step=0;
-  function unlock() {
-    context??=new AudioContext();
-    context.resume().catch(()=>{});
+
+export function createRadio() {
+  let audio;
+  let index=0;
+  let pulse=0;
+  let next=0;
+  let driveTone;
+  let driveGain;
+  function tone(hz,duration,shape,volume,at=audio?.currentTime) {
+    if (!audio || audio.state!=='running') return;
+    const o=audio.createOscillator();
+    const gain=audio.createGain();
+    o.type=shape;
+    o.frequency.setValueAtTime(hz,at);
+    gain.gain.setValueAtTime(volume,at);
+    gain.gain.exponentialRampToValueAtTime(.0001,at+duration);
+    o.connect(gain).connect(audio.destination);
+    o.start(at);
+    o.stop(at+duration);
   }
-  function tone(freq,duration,type='sine',volume=.06,start=context?.currentTime) {
-    if(!context||context.state!=='running'||mute)return;
-    const oscillator=context.createOscillator(), envelope=context.createGain();
-    oscillator.type=type;
-    oscillator.frequency.setValueAtTime(freq,start);
-    envelope.gain.setValueAtTime(volume,start);
-    envelope.gain.exponentialRampToValueAtTime(.001,start+duration);
-    oscillator.connect(envelope).connect(context.destination);
-    oscillator.start(start);
-    oscillator.stop(start+duration);
-  }
-  function tick(enabled,speed=0) {
-    if(!enabled||!context||context.state!=='running'||mute)return;
-    const station=stations[index],now=context.currentTime;
-    if(now<next)return;
-    const n=station.notes[step%station.notes.length];
-    tone(440*2**((n-69)/12),station.beat*.92,station.style,.035);
-    if(step%2===0)tone(step%4===0?56:123,.12,'sine',.05);
-    if(speed>0)tone(30+speed*1.25,station.beat*.88,'triangle',.027);
-    next=now+station.beat;
-    step++;
-  }
-  return {unlock,tone,tick,cycle:()=>{index=(index+1)%stations.length;},
-    toggle:()=>{mute=!mute;},get label(){return mute?'Radio off':stations[index].name;}};
+  return {
+    unlock() {
+      if (!audio) {
+        audio=new AudioContext();
+        driveTone=audio.createOscillator();
+        driveGain=audio.createGain();
+        driveTone.type='triangle';
+        driveGain.gain.value=0;
+        driveTone.connect(driveGain).connect(audio.destination);
+        driveTone.start();
+      }
+      audio.resume();
+    },
+    cycle(){ index=(index+1)%stations.length; },
+    label(){ return stations[index].name; },
+    effect(hz,seconds,shape){ tone(hz,seconds,shape,.11); },
+    update(state) {
+      if (!audio || audio.state!=='running') return;
+      const rolling=state.mode==='play' && state.car;
+      driveGain.gain.setTargetAtTime(rolling ? .032 : 0,audio.currentTime,.12);
+      driveTone.frequency.setTargetAtTime(rolling ? 34+Math.abs(state.car.speed)*3.1 : 34,audio.currentTime,.085);
+      const station=stations[index];
+      if (next<audio.currentTime) next=audio.currentTime+.02;
+      if (!rolling || !station.bass.length) return;
+      if (next<audio.currentTime+.12) {
+        const hz=n=>440*2**((n-69)/12);
+        const i=pulse++%8;
+        tone(hz(station.bass[i]),.18,'triangle',.09,next);
+        if (i%2===0) tone(62,.09,'sine',.15,next);
+        if (i!==2) tone(hz(station.lead[i]),.17,'sine',.045,next+.04);
+        next+=station.beat;
+      }
+    },
+  };
 }

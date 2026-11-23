@@ -1,42 +1,48 @@
-import {canOccupy} from '../world/cityBuilder.js';
+import {faceCar} from './carModels.js';
+import {isBlocked} from '../world/cityBuilder.js';
 
-export function driveVehicle(car,input,dt,vehicles,scriptThrottle=0) {
-  const throttle=(input.down('KeyW','ArrowUp')?1:0)-(input.down('KeyS','ArrowDown')?1:0) || scriptThrottle;
-  const steering=(input.down('KeyA','ArrowLeft')?1:0)-(input.down('KeyD','ArrowRight')?1:0);
-  const brake=input.down('Space');
-  car.speed=Math.max(-10,Math.min(car.name==='Vela GT'?43:35,car.speed+throttle*16*dt));
-  car.speed*=Math.exp(-(brake?3.4:throttle?.13:.52)*dt);
-  car.heading+=steering*Math.sign(car.speed)*Math.min(1,Math.abs(car.speed)*.19)*(brake?2.75:1.64)*dt;
-  const x=car.x+Math.sin(car.heading)*car.speed*dt,z=car.z+Math.cos(car.heading)*car.speed*dt;
-  const hit=vehicles.find(other=>other!==car&&Math.hypot(other.x-x,other.z-z)<2.45);
-  if(!canOccupy(x,z,1.25)||hit) {
-    if(Math.abs(car.speed)>3)car.damage=Math.min(100,car.damage+Math.abs(car.speed)*.32);
-    if(hit)hit.speed*=.66;
-    car.speed*=-.27;
+export function driveCar(state,input,dt) {
+  const car = state.car;
+  const throttle = input.axis('KeyW','KeyS');
+  const turn = input.axis('KeyA','KeyD');
+  const brake = input.down('Space');
+  const limit = (car.type==='van' ? 29 : 44) * (1-car.damage*.0045);
+  car.speed += throttle * (throttle>0 ? 14 : 19)*dt;
+  car.speed *= Math.exp(-dt*(brake ? 3.5 : throttle ? .19 : .74));
+  car.speed = Math.max(-9,Math.min(limit,car.speed));
+  const steering = Math.min(1,Math.abs(car.speed)/7) * (brake ? 2.32 : 1.48);
+  faceCar(car,car.heading+turn*steering*Math.sign(car.speed)*dt);
+  const pos = car.mesh.position;
+  const x = pos.x-Math.sin(car.heading)*car.speed*dt;
+  const z = pos.z-Math.cos(car.heading)*car.speed*dt;
+  const hit = state.traffic.find(other=>other!==car && other.mesh.position.distanceTo({x,y:0,z})<2.22);
+  if (hit || isBlocked(state.lots,x,z,1.1)) {
+    if (Math.abs(car.speed)>3) {
+      car.damage = Math.min(100,car.damage+Math.abs(car.speed)*.34);
+      state.audio.effect(61,.17,'sawtooth');
+      if (car.speed>14 && hit) state.alert(1);
+    }
+    car.speed *= -.27;
   } else {
-    car.x=x;
-    car.z=z;
+    pos.x=x;
+    pos.z=z;
+  }
+  car.mesh.rotation.z = -turn*Math.min(.065,Math.abs(car.speed)*.002);
+  if (car.damage>=100) {
+    state.exitCar();
+    state.damagePlayer(24);
   }
 }
-export function switchVehicle(player,vehicles,raiseHeat) {
-  if(player.vehicle) {
-    const car=player.vehicle;
-    const side=[1,-1].find(s=>canOccupy(car.x+Math.cos(car.heading)*s*2.1,car.z-Math.sin(car.heading)*s*2.1));
-    if(!side)return false;
-    player.x=car.x+Math.cos(car.heading)*side*2.1;
-    player.z=car.z-Math.sin(car.heading)*side*2.1;
-    player.heading=car.heading;
-    car.speed=0;
-    player.vehicle=null;
-    return true;
+
+export function nearestRide(state) {
+  let best;
+  let distance=4.9;
+  for (const car of state.traffic) {
+    const gap=car.mesh.position.distanceTo(state.hero.mesh.position);
+    if (gap<distance && car.damage<100) {
+      best=car;
+      distance=gap;
+    }
   }
-  const car=vehicles.reduce((best,v)=>Math.hypot(v.x-player.x,v.z-player.z)<Math.hypot(best.x-player.x,best.z-player.z)?v:best,{x:Infinity,z:Infinity});
-  if(Math.hypot(car.x-player.x,car.z-player.z)>4.2||Math.abs(car.speed)>12)return false;
-  player.vehicle=car;
-  car.route=null;
-  if(!car.owned) {
-    car.owned=true;
-    raiseHeat(1);
-  }
-  return true;
+  return best;
 }

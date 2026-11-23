@@ -1,73 +1,95 @@
 import * as T from 'three';
-import {batchBoxes,box,material} from '../world/geometry.js';
+import {box, lettering, paint} from '../world/geometry.js';
 
-const tire=new T.CylinderGeometry(.45,.45,.34,14);
-const rim=new T.CylinderGeometry(.26,.26,.36,12);
-const glass=0x294a5e;
-export function makeVehicle(scene,paint,{police=false,sport=false}={}) {
-  const model=new T.Group();
-  const hull=new T.Group();
-  model.add(hull);
-  const w=sport?2.18:2.04;
-  const length=sport?4.76:4.6;
-  box(hull,0x1d2430,0,.52,0,w,.33,length);
-  box(hull,paint,0,.82,0,w,.55,length-.16);
-  box(hull,paint,0,1.04,1.4,w*.95,.25,1.47).rotation.x=.075;
-  box(hull,paint,0,1,-1.63,w*.94,.30,1.18);
-  box(hull,glass,0,1.26,-.09,w*.82,.43,1.96);
-  const windscreen=box(hull,glass,0,1.29,.92,w*.82,.085,.72);
-  windscreen.rotation.x=.58;
-  box(hull,glass,0,1.26,-1.19,w*.80,.085,.83).rotation.x=-.45;
-  box(hull,paint,0,1.53,-.11,w*.82,.10,1.43);
-  for(const side of [-1,1]) {
-    box(hull,paint,side*w*.415,1.29,-.17,.055,.39,.15);
-    box(hull,paint,side*w*.54,1.11,.68,.31,.16,.29);
-    box(hull,0x3f1421,side*w*.33,.93,-length/2+.065,.63,.21,.12);
-    box(hull,0xff423d,side*w*.33,.945,-length/2-.003,.53,.09,.025);
-    box(hull,0xffedc5,side*w*.32,.95,length/2-.18,.55,.15,.13);
-    box(hull,0x111c2a,side*.69,.54,-length/2,.33,.12,.16);
-    if(police) box(hull,0xe6e6db,side*w*.499,.89,0,.035,.45,1.9);
-    for(const z of [-1.48,1.46]) for(const [geo,col] of [[tire,0x20242a],[rim,0xa6aaa7]]) {
-      const wheel=new T.Mesh(geo,material(col));
-      wheel.position.set(side*w*.48,.45,z);
-      wheel.rotation.z=Math.PI/2;
-      wheel.castShadow=true;
-      hull.add(wheel);
-    }
-  }
-  box(hull,0xffe7ba,0,.73,-length/2,.43,.18,.024);
-  if(sport) {
-    box(hull,0x252631,0,1.19,-2.02,w*1.03,.10,.41);
-    for(const x of [-.62,.62]) box(hull,0x252631,x,1.07,-1.96,.09,.25,.15);
-  }
-  if(sport) {
-    box(hull,0x242c36,0,.70,-length/2-.015,.73,.11,.023);
-    for(const side of [-1,1]) {
-      box(hull,0xff9c5d,side*w*.34,1.003,-length/2-.005,.58,.045,.03);
-      box(hull,0x652d26,side*w*.46,.71,-length/2+.04,.21,.14,.12);
-    }
-  }
-  const staticParts=batchBoxes(hull);
-  const boxGeometry=hull.children[0].geometry;
-  for(const part of [...hull.children])if(part.geometry===boxGeometry)hull.remove(part);
-  hull.add(staticParts);
-  const lights=[];
-  if(police) {
-    box(hull,0x263043,0,1.63,-.04,1.6,.11,.32);
-    for(const [x,c] of [[-.46,0xff3448],[.46,0x389aff]]) {
-      const lamp=box(hull,c,x,1.74,-.04,.7,.15,.29);
-      lamp.material=lamp.material.clone();
-      lamp.material.emissive.setHex(c);
-      lights.push(lamp);
-    }
-    box(hull,0xd3dadb,0,.85,-2.31,1.16,.24,.025);
-  }
-  scene.add(model);
-  return {model,hull,lights,x:0,z:0,heading:0,speed:0,damage:0,police,
-    name:police?'Port Patrol':sport?'Vela GT':'Mistral LX'};
+const tire = new T.CylinderGeometry(.39,.39,.28,14);
+const rim = new T.CylinderGeometry(.23,.23,.29,12);
+const shadow = new T.CircleGeometry(1,24);
+
+function chassis(parent, color, y, length, lower, upper, height) {
+  const shape = new T.Shape();
+  shape.moveTo(-lower,-length+.26);
+  shape.lineTo(-lower+.22,-length);
+  shape.lineTo(lower-.22,-length);
+  shape.lineTo(lower,-length+.26);
+  shape.lineTo(upper,length-.25);
+  shape.lineTo(upper-.19,length);
+  shape.lineTo(-upper+.19,length);
+  shape.lineTo(-upper,length-.25);
+  shape.closePath();
+  const geometry = new T.ExtrudeGeometry(shape,{depth:height,bevelEnabled:true,bevelThickness:.105,bevelSize:.09,bevelSegments:1});
+  const mesh = new T.Mesh(geometry,paint(color));
+  mesh.rotation.x = -Math.PI/2;
+  mesh.position.y = y;
+  mesh.castShadow=true;
+  mesh.receiveShadow=true;
+  parent.add(mesh);
 }
-export function poseVehicle(car,t=0) {
-  car.model.position.set(car.x,0,car.z);
-  car.model.rotation.y=car.heading;
-  car.lights.forEach((light,i)=>light.material.emissiveIntensity=Math.floor(t*8+i)%2?2.4:.35);
+
+export function spawnCar(scene, name, color, x, z, heading=0, type='coupe') {
+  const mesh = new T.Group();
+  const patrol = type==='patrol';
+  const van = type==='van';
+  const width = patrol ? 1.08 : 1;
+  const length = van ? 2.38 : 2.19;
+  const cabin = van ? 1.71 : patrol ? 1.45 : 1.22;
+  const contact = new T.Mesh(shadow,new T.MeshBasicMaterial({color:0x282732,transparent:true,opacity:.32,depthWrite:false}));
+  contact.rotation.x = -Math.PI/2;
+  contact.position.y = .029;
+  contact.scale.set(1.32,2.56,1);
+  mesh.add(contact);
+  chassis(mesh,0x252c37,.32,length+.03,width,width,.21);
+  chassis(mesh,color,.55,length,width,width*.99,.31);
+  chassis(mesh,color,.87,length-.18,width*.94,width*.91,.09);
+  const glass = box(mesh,0x304a55,0,(cabin+.92)/2,-.16,1.69,cabin-.9,2.07);
+  glass.rotation.x = van ? 0 : -.08;
+  box(mesh,patrol ? 0xe4e9df : color,0,cabin,-.32,1.61,.12,van ? 2.03 : 1.48);
+  box(mesh,color,0,1.01,.93,1.82,.12,.35);
+  for (const side of [-1,1]) {
+    box(mesh,color,side*.85,1.1,-.18,.1,.44,.1).rotation.z = side*.3;
+    box(mesh,color,side*.86,1.0,.54,.46,.13,.27);
+    box(mesh,0xfaf1bc,side*.75,.71,-length,.4,.18,.065);
+    const tail=box(mesh,0xff484b,side*.71,.74,length+.115,.54,.19,.071);
+    tail.material=new T.MeshStandardMaterial({color:0xff4038,emissive:0xc80c10,emissiveIntensity:.46});
+    box(mesh,0xffa897,side*.71,.78,length+.161,.39,.035,.03);
+    for (const axle of [-1.35,1.36]) {
+      const wheel = new T.Mesh(tire,paint(0x202027));
+      const hub = new T.Mesh(rim,paint(0xa6b2b0));
+      for (const part of [wheel,hub]) {
+        part.rotation.z = Math.PI/2;
+        part.position.set(side*width,.41,axle);
+        mesh.add(part);
+      }
+    }
+    if (patrol) box(mesh,0xe8e9dc,side*(width+.1),.73,-.22,.08,.49,1.92);
+  }
+  box(mesh,0x242935,0,.54,length+.12,1.86,.14,.08);
+  box(mesh,0xffeacf,0,.67,length+.16,.39,.17,.034);
+  if (name==='Aster Veloce') {
+    box(mesh,0x212c38,0,1.045,1.72,1.96,.09,.24);
+    box(mesh,0x282f39,0,.57,length+.171,.94,.12,.04);
+    box(mesh,0x343944,0,.95,1.3,1.26,.055,.27);
+    box(mesh,0x202630,0,.93,1.89,1.04,.07,.2);
+  }
+  const lights = [];
+  if (patrol) {
+    box(mesh,0x293845,0,cabin+.115,-.25,1.48,.14,.35);
+    for (const [side,tint] of [[-1,0x247eff],[1,0xff3545]]) {
+      const panel = box(mesh,tint,side*.43,cabin+.23,-.25,.64,.21,.32);
+      panel.material = new T.MeshBasicMaterial({color:tint,toneMapped:false});
+      lights.push(panel);
+    }
+    lettering(mesh,'PORT PATROL','#253847','#f3ebd1',1.65,.33,0,.98,1.49).rotation.x = -Math.PI/2;
+    lettering(mesh,'PATROL','#ffead6','#23415a',1.34,.24,0,.91,length+.08);
+    lettering(mesh,'PORT PATROL','#293c50','#eee5d0',1.44,.30,width+.155,.73,-.22,Math.PI/2);
+    lettering(mesh,'PORT PATROL','#293c50','#eee5d0',1.44,.30,-width-.155,.73,-.22,-Math.PI/2);
+  }
+  mesh.position.set(x,0,z);
+  mesh.rotation.y = heading;
+  scene.add(mesh);
+  return {mesh,name,type,heading,speed:0,damage:0,lights,parked:false};
+}
+
+export function faceCar(car,heading) {
+  car.heading = heading;
+  car.mesh.rotation.y = heading;
 }

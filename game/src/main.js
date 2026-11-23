@@ -1,189 +1,217 @@
 import * as T from 'three';
-import {buildCity} from './world/cityBuilder.js';
-import {lightWaterfront} from './world/atmosphere.js';
-import {makeVehicle} from './vehicles/carModels.js';
-import {spawnTraffic,updateTraffic} from './vehicles/trafficSystem.js';
-import {driveVehicle,switchVehicle} from './vehicles/vehicleController.js';
-import {makeRaceRivals,tickRaceRivals,racePosition} from './vehicles/raceRivals.js';
-import {makePerson,posePerson,spawnPedestrians,updatePedestrians,movePlayer} from './actors/pedestrians.js';
-import {makeDispatch,tickDispatch,raiseWanted} from './police/dispatch.js';
-import {makeWeapons,aimWeapon,updateWeapons} from './combat/weapons.js';
-import {currentObjective,tickStory} from './missions/storyMissions.js';
-import {activityMarkers,availableActivity,startActivity,activityObjective,tickActivity} from './missions/activities.js';
-import {makeCrew,tickCrew} from './missions/crew.js';
-import {makeWaypoint} from './missions/waypoints.js';
-import {makeRadio} from './audio/radio.js';
-import {loadSave,saveGame} from './save/saveGame.js';
-import {bindInput,neutralInput} from './core/input.js';
-import {followPlayer} from './core/camera.js';
-import {configureShot} from './core/shotMode.js';
-import {updateHUD} from './ui/hud.js';
-import {makeDialogue} from './ui/dialogue.js';
-import {makeMenus} from './ui/menus.js';
-import {renderPortrait} from './ui/portrait.js';
+import {buildCity,isBlocked} from './world/cityBuilder.js';
+import {lightHarbor,makeOcean} from './world/atmosphere.js';
+import {box} from './world/geometry.js';
+import {populateTraffic,updateTraffic} from './vehicles/trafficSystem.js';
+import {driveCar,nearestRide} from './vehicles/vehicleController.js';
+import {makePerson,populateWalkers,urbanWalk,walkPlayer} from './actors/pedestrians.js';
+import {updateDispatch} from './police/dispatch.js';
+import {buildHelicopter,flyHelicopter} from './police/helicopter.js';
+import {updateWeapons} from './combat/weapons.js';
+import {announceStage,advanceStory,currentStage} from './missions/storyMissions.js';
+import {activityPoint,makeCheckpoint,startActivity,updateActivities} from './missions/activities.js';
+import {updateCrew} from './missions/crew.js';
+import {createRadio} from './audio/radio.js';
+import {saveGame} from './save/saveGame.js';
+import {bindInput} from './core/input.js';
+import {createView,followPlayer} from './core/camera.js';
+import {readShot,stageShot} from './core/shotMode.js';
+import {createHUD} from './ui/hud.js';
+import {createMenus} from './ui/menus.js';
 
-const shot=new URLSearchParams(location.search).get('shot');
-const capture=['chase','foot','mission','title'].includes(shot);
-const canvas=document.querySelector('#view');
-const renderer=new T.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:capture});
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+const canvasHost=document.getElementById('viewport');
+const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(1.5,devicePixelRatio));
+renderer.toneMapping=T.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.12;
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=T.PCFSoftShadowMap;
-renderer.toneMapping=T.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.15;
-const scene=new T.Scene(),camera=new T.PerspectiveCamera(62,innerWidth/innerHeight,.12,468);
-const light=lightWaterfront(scene);
-buildCity(scene);
-const cars=spawnTraffic(scene);
-const starter=Object.assign(makeVehicle(scene,0xe35225,{sport:true}),{owned:true,x:4.9,z:8});
-cars.push(starter);
-const rivals=makeRaceRivals(scene);
-const pedestrians=spawnPedestrians(scene);
-const player=makePerson(scene,0xe19651,1);
-const dispatch=makeDispatch(scene),weapons=makeWeapons(scene),crew=makeCrew(),radio=makeRadio();
-const dialogue=makeDialogue(),state={chapter:0,stage:0};
-const waypoint=makeWaypoint(scene);
-const eventMarkers=activityMarkers().map(()=>makeWaypoint(scene,0x61d7d4));
-const input=bindInput(canvas);
-let activity=null,time=0,heading=0,hudTime=0;
-const save=()=>{if(!capture)saveGame(state,player,weapons);};
-const wanted=level=>raiseWanted(dispatch,level);
-const say=(line,speaker)=>dialogue.say(line,speaker);
+canvasHost.append(renderer.domElement);
+const scene=new T.Scene();
+const lighting=lightHarbor(scene);
+const water=makeOcean(scene);
+const groundMarker=new T.Mesh(new T.RingGeometry(1.25,1.52,36),new T.MeshBasicMaterial({
+  color:0xffd981,transparent:true,opacity:.86,side:T.DoubleSide,
+}));
+groundMarker.rotation.x=-Math.PI/2;
+scene.add(groundMarker);
+const beacon=new T.Group();
+box(beacon,0xffca6e,0,2.28,0,.46,.46,.46).rotation.z=Math.PI/4;
+scene.add(beacon);
 
-function newGame(continueGame=false) {
-  const saved=continueGame?loadSave():null;
-  Object.assign(state,{chapter:saved?.chapter??0,stage:saved?.stage??0});
-  Object.assign(player,{x:saved?.x??-8.25,z:saved?.z??-8,heading:0,
-    vehicle:null,health:saved?.health??100,armor:saved?.armor??100,
-    cash:saved?.cash??250,xp:saved?.xp??0});
-  Object.assign(starter,{x:4.9,z:8,heading:0,speed:0,damage:0});
-  if(saved?.ownedCar) {
-    const car=saved.ownedCar.name==='Vela GT'?starter:
-      Object.assign(makeVehicle(scene,0x498a8d),{owned:true});
-    if(!cars.includes(car))cars.push(car);
-    Object.assign(car,{x:player.x,z:player.z,damage:saved.ownedCar.damage});
-    player.vehicle=car;
-  }
-  weapons.slots.slice(1).forEach((item,i)=>item.ammo=saved?.ammo?.[i]??[48,150,24][i]);
-  dispatch.heat=0;dispatch.quiet=0;
-  dispatch.units.forEach(unit=>Object.assign(unit,{active:false,disabled:0,damage:0}));
-  crew.forEach(member=>member.cooldown=0);
-  heading=0;activity=null;
-  weapons.slot=1;
-  weapons.cooldown=weapons.flash=0;
-  camera.position.set(player.x,3,player.z-7);
-  menus.show('play');
-  if(!capture)radio.unlock();
-  if(!saved)say('Meet me by the Juniper Mile promenade. I kept a copy of the manifest.');
-  else dialogue.hide();
-  save();
-}
-const menus=makeMenus({newGame,resume:()=>menus.show('play'),canContinue:()=>!capture&&!!loadSave(),save});
-function resize(){
-  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth,innerHeight,false);
-}
-addEventListener('resize',resize);
-resize();
-renderPortrait(renderer);
-
-function simulate(dt,controls=neutralInput,scripted=false){
-  time+=dt;
-  const play=menus.page==='play';
-  let target=activityObjective(activity)??currentObjective(state);
-  let hint='';
-  if(play){
-    if(controls.tap('KeyR'))radio.cycle();
-    if(controls.tap('KeyM'))radio.toggle();
-    tickCrew(crew,player,dispatch,controls,dt,say);
-    const used=!activity&&tickStory(state,player,controls,wanted,say,save);
-    const event=availableActivity(player);
-    if(!used&&controls.tap('KeyE')){
-      if(!activity&&event&&player.vehicle)activity=startActivity(event);
-      else switchVehicle(player,cars,wanted);
+const state={
+  scene,lots:buildCity(scene),input:bindInput(),view:createView(),
+  traffic:populateTraffic(scene),people:populateWalkers(scene),
+  hero:makePerson(scene,15,28,0x385a6a,2),heli:buildHelicopter(scene),
+  gate:makeCheckpoint(scene),audio:createRadio(),units:[],traces:[],
+  crew:{nia:0,ivo:0},car:null,activity:null,shot:readShot(),mode:'title',
+  time:0,heat:0,stars:0,cash:0,xp:0,mission:0,stage:0,slot:0,
+  health:100,armour:45,shotCooldown:0,message:null,
+  position(){ return this.car?.mesh.position ?? this.hero.mesh.position; },
+  alert(level,seconds=15) {
+    this.stars=Math.max(this.stars,level);
+    this.heat=Math.max(this.heat,seconds);
+  },
+  damagePlayer(amount) {
+    const absorbed=Math.min(this.armour,amount*.65);
+    this.armour-=absorbed;
+    this.health-=amount-absorbed;
+    if (this.health<=0) {
+      if (this.car) this.exitCar();
+      this.hero.mesh.position.set(15,0,28);
+      this.health=100;
+      this.armour=35;
+      this.stars=0;
+      this.cash=Math.max(0,this.cash-250);
+      this.view.ready=false;
+      this.speak('Ivo','I brought you back to Juniper. Patrol kept your spare cash.',7);
+      this.save();
     }
-    if(player.vehicle){
-      const collisions=activity?.event.kind==='Street race'?[...cars,...rivals.filter(rival=>rival.activity===activity)]:cars;
-      driveVehicle(player.vehicle,controls,dt,collisions,scripted?Math.min(1,Math.abs(player.vehicle.speed)*.13/16):0);
-      player.x=player.vehicle.x;player.z=player.vehicle.z;
-      heading=player.vehicle.heading;
+  },
+  exitCar() {
+    const car=this.car;
+    const pos=car.mesh.position;
+    const side=Math.cos(car.heading)*2.2;
+    const offset=-Math.sin(car.heading)*2.2;
+    const exit=[1,-1].map(sign=>[pos.x+side*sign,pos.z+offset*sign]).find(
+      ([x,z])=>!isBlocked(this.lots,x,z));
+    this.hero.mesh.position.set(exit?.[0] ?? pos.x,0,exit?.[1] ?? pos.z);
+    this.hero.heading=car.heading;
+    this.hero.mesh.visible=true;
+    car.parked=true;
+    car.speed=0;
+    this.car=null;
+    this.view.ready=false;
+  },
+  speak(speaker,line,seconds) { this.message={speaker,line,until:this.time+seconds}; },
+  save(){ return saveGame(this); },
+  start(save) {
+    if (this.car) this.exitCar();
+    if (this.activity) this.activity.rivals.forEach(car=>scene.remove(car.mesh));
+    this.activity=null;
+    this.hero.mesh.position.set(save?.x ?? 15,0,save?.z ?? 28);
+    this.view.heading=save?.heading ?? 0;
+    this.hero.heading=this.view.heading;
+    this.view.ready=false;
+    this.hero.mesh.visible=true;
+    this.cash=save?.cash ?? 300;
+    this.xp=save?.xp ?? 0;
+    this.health=save?.health ?? 100;
+    this.armour=save?.armour ?? 45;
+    this.mission=save?.mission ?? 0;
+    this.stage=save?.stage ?? 0;
+    this.stars=0;
+    this.crew={nia:0,ivo:0};
+    this.mode='play';
+    this.audio.unlock();
+    announceStage(this);
+    showMenu('play');
+    this.save();
+  },
+  resume(){ this.mode='play'; showMenu('play'); this.audio.unlock(); },
+  title(){ this.mode='title'; this.view.ready=false; showMenu('title'); },
+};
+const drawHUD=createHUD();
+const showMenu=createMenus(state);
+const camera=state.view.camera;
+
+function resize() {
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+  document.documentElement.style.setProperty('--hud-scale',Math.min(innerWidth/1280,innerHeight/800));
+}
+
+function readActions() {
+  const input=state.input;
+  if (input.tap('KeyE')) {
+    if (state.car) state.exitCar();
+    else {
+      const car=nearestRide(state);
+      if (car) {
+        state.car=car;
+        state.hero.mesh.visible=false;
+        state.view.ready=false;
+        state.alert(car.parked ? 1 : 2);
+        state.audio.effect(118,.13,'triangle');
+      }
+    }
+  }
+  if (input.tap('KeyR')) startActivity(state,'race');
+  if (input.tap('KeyC')) startActivity(state,'courier');
+  if (input.tap('KeyT')) state.audio.cycle();
+}
+
+function updateMarker() {
+  const stage=currentStage(state);
+  const point=state.activity ? activityPoint(state.activity) : stage?.slice(1,3);
+  beacon.visible=groundMarker.visible=state.mode==='play' && !state.shot && Boolean(point);
+  if (!point) return;
+  groundMarker.position.set(point[0],.19,point[1]);
+  beacon.position.set(point[0],Math.sin(state.time*2)*.37,point[1]);
+  beacon.rotation.y=state.time;
+}
+
+function stepWorld(dt) {
+  state.time+=dt;
+  water.value=state.time;
+  if (state.mode==='play') {
+    if (!state.shot) {
+      readActions();
+      if (state.car) driveCar(state,state.input,dt);
+      else walkPlayer(state,state.input,dt);
+      updateWeapons(state,dt);
+      updateCrew(state,dt);
+    } else if (state.car) {
+      state.car.mesh.position.z-=state.car.speed*dt;
     } else {
-      const turn=(controls.down('KeyA','ArrowLeft')?1:0)-(controls.down('KeyD','ArrowRight')?1:0);
-      if(!controls.active)heading+=turn*dt*1.7;
-      const moving=movePlayer(player,controls,heading,dt);
-      player.heading=heading;
-      aimWeapon(player,controls,camera);
-      if(controls.active&&!scripted)heading+=(Math.atan2(Math.sin(player.heading-heading),Math.cos(player.heading-heading)))*dt*(controls.down('KeyW','ArrowUp')?1.5:.8);
-      posePerson(player,time*11,moving,weapons.slot!==0&&(controls.active||shot==='foot'));
+      walkPlayer(state,state.input,dt);
     }
-    player.group.visible=!player.vehicle;
-    const before=player.health;
-    tickDispatch(dispatch,player,dt,time,scripted);
-    if(player.health<before&&player.armor>0){
-      const blocked=Math.min(before-player.health,player.armor);
-      player.armor-=blocked;player.health+=blocked;
-    }
-    if(player.health<=0||player.vehicle?.damage>=100){
-      player.vehicle=null;
-      player.health=100;player.armor=65;player.cash=Math.max(0,player.cash-150);
-      player.x=-8.1;player.z=7;heading=0;dispatch.heat=0;
-      say('You’re back on Juniper Mile. The crew covered your escape.');
-      save();
-    }
-    updateWeapons(weapons,player,controls,dispatch,dt,wanted,radio.tone);
-    if(activity)activity=tickActivity(activity,player,dt,say,save);
-    if(!scripted)dialogue.tick(dt);
-    target=activityObjective(activity)??currentObjective(state);
-    if(!scripted) {
-      if(target?.action==='use'&&Math.hypot(player.x-target.x,player.z-target.z)<6.5)hint='Interact';
-      else if(event&&!activity&&player.vehicle)hint='Start '+event.kind.toLowerCase();
-      else if(!player.vehicle&&cars.some(car=>Math.abs(car.speed)<=12&&Math.hypot(car.x-player.x,car.z-player.z)<4.2))hint='Enter vehicle';
-    }
-    radio.tick(!!player.vehicle,Math.abs(player.vehicle?.speed??0));
-  } else {
-    player.group.visible=false;
-    tickDispatch(dispatch,player,dt,time);
+    updateDispatch(state,dt);
+    if (!state.shot) advanceStory(state);
+    updateActivities(state,dt);
+    if (state.message?.until<=state.time) state.message=null;
   }
-  tickRaceRivals(rivals,play?activity:null,dt,time);
-  updateTraffic(cars,player.vehicle,dt,time,player);
-  updatePedestrians(pedestrians,player,time,dt,dispatch.heat);
-  waypoint(play?target:null,time);
-  eventMarkers.forEach((marker,index)=>marker(play&&!activity?activityMarkers()[index]:null,time));
-  if(play&&(time>=hudTime||scripted)){
-    updateHUD(player,dispatch,target,crew,weapons,radio,cars,hint,racePosition(rivals,player,activity));
-    hudTime=time+.095;
-  }
-  followPlayer(camera,player,dt,play?null:'title',heading);
-  light(play?player.x:0,play?player.z:30);
+  updateTraffic(state,dt);
+  urbanWalk(state,dt);
+  flyHelicopter(state,dt);
+  updateMarker();
+  followPlayer(state,dt);
 }
 
-if(capture){
-  if(shot==='title'){
-    Object.assign(player,{x:0,z:32});
-    menus.show('title');
-  }else{
-    newGame();
-    activity=configureShot(shot,{player,state,dispatch,crew,weapons,cars,starter,dialogue});
-  }
-  for(let i=0;i<115;i++)simulate(1/60,neutralInput,true);
+function present() {
+  lighting.follow(state.mode==='title' ? {x:0,z:-37} : state.position());
+  drawHUD(state);
   renderer.render(scene,camera);
-  document.documentElement.dataset.captureReady=shot;
-  addEventListener('resize',()=>renderer.render(scene,camera));
-}else{
-  Object.assign(player,{x:0,z:32});
-  menus.show('title');
-  let last=performance.now();
-  function frame(now){
-    const dt=Math.min(.05,(now-last)/1000);last=now;
-    if(input.tap('Escape')){
-      if(menus.page==='play')menus.show('pause');
-      else if(menus.page==='pause')menus.show('play');
-      else if(menus.page==='pause-controls')menus.show('pause');
-      else if(menus.page==='title-controls')menus.show('title');
+}
+
+window.addEventListener('resize',()=>{
+  resize();
+  if (state.shot) present();
+});
+resize();
+if (state.shot) {
+  const seconds=stageShot(state);
+  for (let i=0;i<Math.round(seconds*60);i++) stepWorld(1/60);
+  showMenu(state.mode);
+  requestAnimationFrame(present);
+} else {
+  showMenu('title');
+  let previous=performance.now();
+  function frame(now) {
+    const dt=Math.min(.045,Math.max(.0001,(now-previous)/1000));
+    previous=now;
+    if (state.input.tap('Escape')) {
+      if (state.mode==='play') {
+        state.mode='pause';
+        showMenu('pause');
+      } else if (state.mode==='pause') state.resume();
+      else showMenu('title');
     }
-    if(!menus.page.startsWith('pause'))simulate(dt,input);
-    input.pressed.clear();
-    renderer.render(scene,camera);
+    if (state.mode!=='pause') stepWorld(dt);
+    state.audio.update(state);
+    present();
+    state.input.finish();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

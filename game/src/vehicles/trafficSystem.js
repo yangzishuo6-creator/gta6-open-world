@@ -1,39 +1,58 @@
-import {makeVehicle,poseVehicle} from './carModels.js';
-import {roadXs,roadZs} from '../world/cityBuilder.js';
-import {seededRandom} from '../world/geometry.js';
+import {avenues,crossStreets} from '../world/cityBuilder.js';
+import {faceCar,spawnCar} from './carModels.js';
 
-const colors=[0x47a5ae,0xdfbd82,0xc8644d,0x344a6d,0xece3cc,0x91a36f,0xa45471];
-export function spawnTraffic(scene) {
-  const rng=seededRandom(821);
+const fleet = [
+  ['Lumen S4',0xe5aa5f,'coupe'],['Maris 86',0x74a9a3,'coupe'],
+  ['Canopy Transit',0xe4d9c4,'van'],['Cinder GT',0xad5145,'coupe'],
+  ['Sora LX',0x667d9b,'coupe'],['Aster Veloce',0xe88a37,'coupe'],
+];
+
+export function populateTraffic(scene) {
   const cars=[];
-  for(let i=0;i<69;i++) {
-    const vertical=i<49;
-    const axis=vertical?roadXs[i<16?4:i%4]:roadZs[(i*3)%roadZs.length];
-    const direction=i%2?1:-1;
-    const car=makeVehicle(scene,colors[i%colors.length],{sport:i%7===0});
-    const offset=vertical?(i<16?-270+i*35:-288+rng()*580):-204+rng()*201;
-    const lane=axis+direction*(i%3===0?5.4:2);
-    Object.assign(car,{x:vertical?lane:offset,z:vertical?offset:lane,
-      heading:vertical?(direction===1?0:Math.PI):direction*Math.PI/2,
-      route:{vertical,direction,cruise:8+rng()*7}});
+  for (let i=0;i<42;i++) {
+    const [name,color,type]=fleet[i%fleet.length];
+    const heading=i%2 ? 0 : Math.PI;
+    const avenue=avenues[i<18 ? 0 : 1+(i%4)];
+    const lane=avenue+(i%2 ? 3.1 : -3.1);
+    const car=spawnCar(scene,name,color,lane,267-(i*39)%598,heading,type);
+    car.route={axis:'z',lane,heading,pace:9+i%6};
+    cars.push(car);
+  }
+  for (let i=0;i<8;i++) {
+    const [name,color,type]=fleet[i%fleet.length];
+    const heading=i%2 ? Math.PI/2 : -Math.PI/2;
+    const lane=crossStreets[i+1]+(i%2 ? -3 : 3);
+    const car=spawnCar(scene,name,color,-25-i*20,lane,heading,type);
+    car.route={axis:'x',lane,heading,pace:9+i%4};
+    cars.push(car);
+  }
+  for (let i=0;i<12;i++) {
+    const [name,color,type]=fleet[(i+5)%fleet.length];
+    const car=spawnCar(scene,name,color,i<6 ? 7.7 : -7.7,42-i*29,i<6 ? 0 : Math.PI,type);
+    car.parked=true;
     cars.push(car);
   }
   return cars;
 }
-export function updateTraffic(cars,driver,dt,time,viewer) {
-  for(const car of cars) {
-    car.model.visible=Math.hypot(car.x-viewer.x,car.z-viewer.z)<180;
-    if(car===driver||!car.route) {if(car.model.visible)poseVehicle(car,time);continue;}
-    const {vertical,direction,cruise}=car.route;
-    const coordinate=vertical?'z':'x';
-    const cross=vertical?'x':'z';
-    const gap=cars.some(other=>other!==car&&Math.abs(other[cross]-car[cross])<1.6&&
-      (other[coordinate]-car[coordinate])*direction>0&&(other[coordinate]-car[coordinate])*direction<8);
-    car.speed+=( (gap?0:cruise)-car.speed)*Math.min(1,dt*3);
-    car[coordinate]+=direction*car.speed*dt;
-    const lo=vertical?-293:-208,hi=vertical?293:4;
-    if(car[coordinate]>hi)car[coordinate]=lo;
-    if(car[coordinate]<lo)car[coordinate]=hi;
-    if(car.model.visible)poseVehicle(car,time);
+
+export function updateTraffic(state,dt) {
+  for (const car of state.traffic) {
+    if (car===state.car || car.parked || !car.route) continue;
+    const {axis,heading,lane,pace}=car.route;
+    const pos=car.mesh.position;
+    const across=axis==='x' ? 'z' : 'x';
+    faceCar(car,heading);
+    pos[across]=lane;
+    const dir=axis==='z' ? -Math.cos(heading) : -Math.sin(heading);
+    const blocked=state.traffic.some(other=>other!==car &&
+      Math.abs(other.mesh.position[across]-lane)<1.7 &&
+      (other.mesh.position[axis]-pos[axis])*dir>0 &&
+      (other.mesh.position[axis]-pos[axis])*dir<6);
+    car.speed += ((blocked ? 0 : pace)-car.speed)*Math.min(1,dt*2.5);
+    pos[axis]+=dir*car.speed*dt;
+    if (axis==='z' && pos.z<-342) pos.z=282;
+    if (axis==='z' && pos.z>284) pos.z=-337;
+    if (axis==='x' && pos.x<-207) pos.x=-12;
+    if (axis==='x' && pos.x>-11) pos.x=-206;
   }
 }
