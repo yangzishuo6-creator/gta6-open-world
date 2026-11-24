@@ -36,7 +36,9 @@ Run `node serve.ts` with Node.js 22 or newer and open `http://localhost:8080` in
 | `vehicles/`, `actors/` | Car models, arcade driving, traffic and pedestrians |
 | `police/`, `combat/` | Cruiser cover, roadblocks, air support, weapons and street effects |
 | `missions/` | Ledger case, activities and crew cooldowns |
-| `ui/` | HUD, local map, dialogue portraits, title and interactive city atlas |
-| `audio/`, `save/` | Synth radio, sound effects, garage services and local progression |
+| `ui/` | HUD, title, dialogue portraits, district atlas, showroom and save-slot menus |
+| `audio/`, `save/` | Synth radio, sound effects, Ivo’s workshop services and local progression |
+
+Park by Ivo's safehouse on Bayfront Drive and open **Garage** in the atlas to buy a $120 ammo restock. Bring a damaged, running car and lose Port Patrol to buy a $250 repair.
 
 Run `MAKEFUN_OUTPUT_DIR=out node main.ts` to package the game and screenshots and generate `out/dossier.json`.

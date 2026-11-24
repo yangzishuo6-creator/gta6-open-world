@@ -14,7 +14,7 @@ import {activityPoint,makeCheckpoint,startActivity,updateActivities} from './mis
 import {updateCrew} from './missions/crew.js';
 import {createRadio} from './audio/radio.js';
 import {saveGame} from './save/saveGame.js';
-import {markGarage,useGarage} from './save/garage.js';
+import {markGarage,serviceGarage,useGarage} from './save/garage.js';
 import {bindInput} from './core/input.js';
 import {createView,followPlayer} from './core/camera.js';
 import {finishShot,readShot,stageShot} from './core/shotMode.js';
@@ -88,6 +88,30 @@ const state={
   },
   speak(speaker,line,seconds) { this.message={speaker,line,until:this.time+seconds}; },
   save(slot){ return saveGame(this,slot); },
+  serviceGarage(key){ return serviceGarage(this,key); },
+  drawShowroom(canvas) {
+    const model=this.car ?? this.traffic.find(car=>car.name==='Aster Veloce');
+    const display=new T.Scene();
+    display.add(new T.HemisphereLight(0xfff1d0,0x75607c,2.5));
+    const key=new T.DirectionalLight(0xffdfad,3);
+    key.position.set(3,5,-4);
+    display.add(key);
+    const preview=model.mesh.clone();
+    preview.position.set(0,0,0);
+    preview.rotation.set(0,0,0);
+    display.add(preview);
+    const buffer=renderer.domElement;
+    const camera=new T.PerspectiveCamera(30,buffer.width/buffer.height,.1,40);
+    camera.position.set(7,3.3,-6);
+    camera.lookAt(0,.72,0);
+    const context=canvas.getContext('2d');
+    const ratio=canvas.width/canvas.height;
+    const width=Math.min(buffer.width,buffer.height*ratio);
+    const height=width/ratio;
+    display.background=new T.Color(0x224e53);
+    renderer.render(display,camera);
+    context.drawImage(buffer,(buffer.width-width)/2,(buffer.height-height)/2,width,height,0,0,canvas.width,canvas.height);
+  },
   start(save) {
     if (this.car) this.exitCar();
     if (this.activity) this.activity.rivals.forEach(car=>scene.remove(car.mesh));

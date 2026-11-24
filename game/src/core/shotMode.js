@@ -6,7 +6,7 @@ import {addCarLampBloom} from '../combat/streetEffects.js';
 
 export function readShot() {
   const name=new URLSearchParams(location.search).get('shot');
-  return ['title','chase','foot','map'].includes(name) ? name : null;
+  return ['title','chase','foot','map','shop'].includes(name) ? name : null;
 }
 
 export function stageShot(state) {
@@ -20,9 +20,16 @@ export function stageShot(state) {
   state.stage=1;
   state.stats={earned:18150,stolen:12,escapes:7};
   state.owned=['Aster Veloce','Canopy Transit'];
+  if (state.shot==='shop') {
+    state.mode='pause';
+    state.car=spawnCar(state.scene,'Aster Veloce',0xff6b16,-9,-67);
+    state.car.damage=17;
+    followMapShot(state);
+    return 0;
+  }
   if (state.shot==='map') {
     state.mode='pause';
-    state.hero.mesh.position.set(-50,0,12);
+    state.hero.mesh.position.set(-19,0,15);
     followMapShot(state);
     return 0;
   }
